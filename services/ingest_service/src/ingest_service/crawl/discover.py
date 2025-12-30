@@ -89,6 +89,9 @@ def _extract_links(html: str, *, base: str) -> Iterable[str]:
 
 def _normalize_url(url: str) -> str:
     url, _frag = urldefrag(url)
+    # URLs must not contain whitespace. Users may paste line-wrapped URLs that
+    # include newlines/spaces; strip them to keep discovery robust.
+    url = "".join(url.split())
     return url.strip()
 
 

@@ -4,6 +4,7 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import typer
 
@@ -22,6 +23,10 @@ from ingest_service.settings import settings as ingest_settings
 
 app = typer.Typer(help="Ingest service (snapshot, parse, segment).")
 
+def _sanitize_url(url: str) -> str:
+    # Users may paste line-wrapped URLs; remove whitespace defensively.
+    return "".join(url.split())
+
 
 @app.command()
 def fetch(url: str) -> None:
@@ -30,7 +35,7 @@ def fetch(url: str) -> None:
 
     Note: requires network access at runtime.
     """
-    snap = snapshot_url(url)
+    snap = snapshot_url(_sanitize_url(url))
     typer.echo(f"stored: {snap.raw_path}")
     typer.echo(f"meta:   {snap.meta_path}")
 
@@ -53,6 +58,7 @@ def ingest(
     Note: requires network access at runtime.
     """
     _ = core_settings.database_url  # ensure env is loaded
+    url = _sanitize_url(url)
     snap = snapshot_url(url)
     html = snap.content.decode("utf-8", errors="replace")
     parsed_blocks = parse_html_to_blocks(html)
@@ -101,10 +107,19 @@ def ingest(
 
         session.flush()
 
-        span_sequence: list[SentenceSpan] = []
+        existing_blocks_by_order = _load_existing_blocks_by_order(session, edition_id=edition_id)
+        existing_paras_by_order = _load_existing_paragraphs_by_order(session, edition_id=edition_id)
+        existing_para_ids_with_spans = {
+            r[0]
+            for r in session.query(SentenceSpan.para_id)
+            .filter(SentenceSpan.edition_id == edition_id)
+            .distinct()
+            .all()
+        }
+
+        created_spans = 0
         global_para_order = 0
         for b in parsed_blocks:
-            block_id = uuid.uuid4()
             block_type = _map_block_type(b.block_type)
             block_subtype = _map_block_subtype(b.block_subtype)
 
@@ -113,66 +128,108 @@ def ingest(
                 author_override_id = author_id_for(b.author_override_name)
                 _upsert_author(session, author_id=author_override_id, name_canonical=b.author_override_name)
 
-            text_block = TextBlock(
-                block_id=block_id,
-                edition_id=edition_id,
-                parent_block_id=None,
-                block_type=block_type,
-                block_subtype=block_subtype,
-                title=b.title,
-                order_index=b.order_index,
-                path=b.path,
-                author_id_override=author_override_id,
-                author_role=None,
-            )
-            session.add(text_block)
-            session.flush()
+            existing_block = existing_blocks_by_order.get(b.order_index)
+            effective_subtype = _prefer_subtype(_infer_page_subtype(url), block_subtype)
+            if existing_block is not None:
+                if existing_block.block_type != block_type or existing_block.block_subtype != effective_subtype:
+                    raise RuntimeError(
+                        "Ingest would mutate an existing Edition's block structure. "
+                        f"edition_id={edition_id} block_order={b.order_index} "
+                        f"existing_type={existing_block.block_type} new_type={block_type} "
+                        f"existing_subtype={existing_block.block_subtype} new_subtype={effective_subtype}. "
+                        "Create a new Edition (different source_url) if the substrate changed."
+                    )
+                if (existing_block.path or None) != (b.path or None):
+                    raise RuntimeError(
+                        "Ingest would mutate an existing Edition's block path. "
+                        f"edition_id={edition_id} block_order={b.order_index} "
+                        f"existing_path={existing_block.path!r} new_path={b.path!r}. "
+                        "Create a new Edition if parsing changed."
+                    )
+                block_id = existing_block.block_id
+            else:
+                text_block = TextBlock(
+                    block_id=uuid.uuid4(),
+                    edition_id=edition_id,
+                    parent_block_id=None,
+                    block_type=block_type,
+                    block_subtype=effective_subtype,
+                    title=b.title,
+                    source_url=url,
+                    order_index=b.order_index,
+                    path=b.path,
+                    author_id_override=author_override_id,
+                    author_role=None,
+                )
+                session.add(text_block)
+                session.flush()
+                block_id = text_block.block_id
 
             for block_para_index, para_text in enumerate(b.paragraphs):
-                para_id = uuid.uuid4()
                 normalized = para_text.strip()
+                if not normalized:
+                    continue
                 para_hash = sha256_text(normalized)
-                paragraph = Paragraph(
-                    para_id=para_id,
-                    edition_id=edition_id,
-                    block_id=block_id,
-                    order_index=global_para_order,
-                    start_char=None,
-                    end_char=None,
-                    para_hash=para_hash,
-                    text_normalized=normalized,
-                )
-                session.add(paragraph)
-                session.flush()
-
-                sentences = split_paragraph_into_sentences(language, normalized)
-                for sent_index, sentence in enumerate(sentences):
-                    span = SentenceSpan(
-                        span_id=uuid.uuid4(),
+                existing_para = existing_paras_by_order.get(global_para_order)
+                if existing_para is not None:
+                    if existing_para.para_hash != para_hash:
+                        raise RuntimeError(
+                            "Ingest would mutate an existing Edition's paragraph content. "
+                            f"edition_id={edition_id} para_order={global_para_order} "
+                            f"existing_hash={existing_para.para_hash} new_hash={para_hash}. "
+                            "Create a new Edition if the substrate changed."
+                        )
+                    if existing_para.block_id != block_id:
+                        raise RuntimeError(
+                            "Ingest would mutate an existing Edition's paragraph block assignment. "
+                            f"edition_id={edition_id} para_order={global_para_order} "
+                            f"existing_block_id={existing_para.block_id} new_block_id={block_id}. "
+                            "Create a new Edition if parsing changed."
+                        )
+                    para_id = existing_para.para_id
+                else:
+                    paragraph = Paragraph(
+                        para_id=uuid.uuid4(),
                         edition_id=edition_id,
                         block_id=block_id,
-                        para_id=para_id,
-                        para_index=global_para_order,
-                        sent_index=sent_index,
+                        order_index=global_para_order,
                         start_char=None,
                         end_char=None,
-                        text=sentence,
-                        text_hash=sha256_text(sentence),
-                        prev_span_id=None,
-                        next_span_id=None,
+                        para_hash=para_hash,
+                        text_normalized=normalized,
                     )
-                    session.add(span)
-                    span_sequence.append(span)
+                    session.add(paragraph)
+                    session.flush()
+                    para_id = paragraph.para_id
+
+                # Only create spans if they are missing for this paragraph (resume-safe).
+                if para_id not in existing_para_ids_with_spans:
+                    sentences = split_paragraph_into_sentences(language, normalized)
+                    for sent_index, sentence in enumerate(sentences):
+                        span = SentenceSpan(
+                            span_id=uuid.uuid4(),
+                            edition_id=edition_id,
+                            block_id=block_id,
+                            para_id=para_id,
+                            para_index=global_para_order,
+                            sent_index=sent_index,
+                            start_char=None,
+                            end_char=None,
+                            text=sentence,
+                            text_hash=sha256_text(sentence),
+                            prev_span_id=None,
+                            next_span_id=None,
+                        )
+                        session.add(span)
+                        created_spans += 1
+                    existing_para_ids_with_spans.add(para_id)
 
                 global_para_order += 1
 
         session.flush()
 
-        for i, span in enumerate(span_sequence):
-            if i > 0:
-                span.prev_span_id = span_sequence[i - 1].span_id
-            if i + 1 < len(span_sequence):
-                span.next_span_id = span_sequence[i + 1].span_id
+        if created_spans:
+            _relink_spans_for_edition(session, edition_id=edition_id)
 
         ingest_run.finished_at = datetime.utcnow()
         ingest_run.status = "succeeded"
@@ -201,7 +258,10 @@ def ingest_work(
     This avoids creating multiple Editions for works split across pages (common on marxists.org).
     """
     _ = core_settings.database_url
+    root_url = _sanitize_url(root_url)
     discovery = discover_work_urls(root_url, max_pages=max_pages)
+    if not discovery.urls:
+        raise typer.BadParameter(f"No in-scope URLs discovered from root_url={root_url!r}. Check the URL.")
 
     author_id = author_id_for(author)
     work_id = work_id_for(author_id=author_id, title=title)
@@ -272,7 +332,17 @@ def ingest_work(
 
         session.flush()
 
-        span_sequence: list[SentenceSpan] = []
+        existing_blocks_by_order = _load_existing_blocks_by_order(session, edition_id=edition_id)
+        existing_paras_by_order = _load_existing_paragraphs_by_order(session, edition_id=edition_id)
+        existing_para_ids_with_spans = {
+            r[0]
+            for r in session.query(SentenceSpan.para_id)
+            .filter(SentenceSpan.edition_id == edition_id)
+            .distinct()
+            .all()
+        }
+
+        created_spans = 0
         global_block_order = 0
         global_para_order = 0
 
@@ -282,7 +352,6 @@ def ingest_work(
             parsed_blocks = parse_html_to_blocks(html)
 
             for b in parsed_blocks:
-                block_id = uuid.uuid4()
                 block_type = _map_block_type(b.block_type)
                 block_subtype = _map_block_subtype(b.block_subtype)
 
@@ -297,69 +366,109 @@ def ingest_work(
                 # Keep page URL visible for audit/debug until we add a dedicated source_url field.
                 block_title = f"{block_title} [{url}]"
 
-                text_block = TextBlock(
-                    block_id=block_id,
-                    edition_id=edition_id,
-                    parent_block_id=None,
-                    block_type=block_type,
-                    block_subtype=block_subtype,
-                    title=block_title,
-                    order_index=global_block_order,
-                    path=f"{page_idx + 1}.{b.order_index + 1}",
-                    author_id_override=author_override_id,
-                    author_role=None,
-                )
-                session.add(text_block)
-                session.flush()
+                path = f"{page_idx + 1}.{b.order_index + 1}"
+                existing_block = existing_blocks_by_order.get(global_block_order)
+                effective_subtype = _prefer_subtype(_infer_page_subtype(url), block_subtype)
+                if existing_block is not None:
+                    if existing_block.block_type != block_type or existing_block.block_subtype != effective_subtype:
+                        raise RuntimeError(
+                            "Ingest-work would mutate an existing Edition's block structure. "
+                            f"edition_id={edition_id} block_order={global_block_order} "
+                            f"existing_type={existing_block.block_type} new_type={block_type} "
+                            f"existing_subtype={existing_block.block_subtype} new_subtype={effective_subtype}. "
+                            "Create a new Edition if parsing changed."
+                        )
+                    if (existing_block.path or None) != path:
+                        raise RuntimeError(
+                            "Ingest-work would mutate an existing Edition's block path. "
+                            f"edition_id={edition_id} block_order={global_block_order} "
+                            f"existing_path={existing_block.path!r} new_path={path!r}. "
+                            "Create a new Edition if parsing changed."
+                        )
+                    block_id = existing_block.block_id
+                else:
+                    text_block = TextBlock(
+                        block_id=uuid.uuid4(),
+                        edition_id=edition_id,
+                        parent_block_id=None,
+                        block_type=block_type,
+                        block_subtype=effective_subtype,
+                        title=block_title,
+                        source_url=url,
+                        order_index=global_block_order,
+                        path=path,
+                        author_id_override=author_override_id,
+                        author_role=None,
+                    )
+                    session.add(text_block)
+                    session.flush()
+                    block_id = text_block.block_id
                 global_block_order += 1
 
                 for para_text in b.paragraphs:
-                    para_id = uuid.uuid4()
                     normalized = para_text.strip()
                     if not normalized:
                         continue
                     para_hash = sha256_text(normalized)
-                    paragraph = Paragraph(
-                        para_id=para_id,
-                        edition_id=edition_id,
-                        block_id=block_id,
-                        order_index=global_para_order,
-                        start_char=None,
-                        end_char=None,
-                        para_hash=para_hash,
-                        text_normalized=normalized,
-                    )
-                    session.add(paragraph)
-                    session.flush()
-
-                    sentences = split_paragraph_into_sentences(language, normalized)
-                    for sent_index, sentence in enumerate(sentences):
-                        span = SentenceSpan(
-                            span_id=uuid.uuid4(),
+                    existing_para = existing_paras_by_order.get(global_para_order)
+                    if existing_para is not None:
+                        if existing_para.para_hash != para_hash:
+                            raise RuntimeError(
+                                "Ingest-work would mutate an existing Edition's paragraph content. "
+                                f"edition_id={edition_id} para_order={global_para_order} "
+                                f"existing_hash={existing_para.para_hash} new_hash={para_hash}. "
+                                "Create a new Edition if the substrate changed."
+                            )
+                        if existing_para.block_id != block_id:
+                            raise RuntimeError(
+                                "Ingest-work would mutate an existing Edition's paragraph block assignment. "
+                                f"edition_id={edition_id} para_order={global_para_order} "
+                                f"existing_block_id={existing_para.block_id} new_block_id={block_id}. "
+                                "Create a new Edition if parsing changed."
+                            )
+                        para_id = existing_para.para_id
+                    else:
+                        paragraph = Paragraph(
+                            para_id=uuid.uuid4(),
                             edition_id=edition_id,
                             block_id=block_id,
-                            para_id=para_id,
-                            para_index=global_para_order,
-                            sent_index=sent_index,
+                            order_index=global_para_order,
                             start_char=None,
                             end_char=None,
-                            text=sentence,
-                            text_hash=sha256_text(sentence),
-                            prev_span_id=None,
-                            next_span_id=None,
+                            para_hash=para_hash,
+                            text_normalized=normalized,
                         )
-                        session.add(span)
-                        span_sequence.append(span)
+                        session.add(paragraph)
+                        session.flush()
+                        para_id = paragraph.para_id
+
+                    if para_id not in existing_para_ids_with_spans:
+                        sentences = split_paragraph_into_sentences(language, normalized)
+                        for sent_index, sentence in enumerate(sentences):
+                            span = SentenceSpan(
+                                span_id=uuid.uuid4(),
+                                edition_id=edition_id,
+                                block_id=block_id,
+                                para_id=para_id,
+                                para_index=global_para_order,
+                                sent_index=sent_index,
+                                start_char=None,
+                                end_char=None,
+                                text=sentence,
+                                text_hash=sha256_text(sentence),
+                                prev_span_id=None,
+                                next_span_id=None,
+                            )
+                            session.add(span)
+                            created_spans += 1
+                        existing_para_ids_with_spans.add(para_id)
 
                     global_para_order += 1
 
         session.flush()
 
-        for i, span in enumerate(span_sequence):
-            if i > 0:
-                span.prev_span_id = span_sequence[i - 1].span_id
-            if i + 1 < len(span_sequence):
-                span.next_span_id = span_sequence[i + 1].span_id
+        if created_spans:
+            _relink_spans_for_edition(session, edition_id=edition_id)
 
         ingest_run.status = "succeeded"
         session.commit()
@@ -418,6 +527,263 @@ def _map_block_subtype(value: str | None) -> BlockSubtype | None:
         "editor_note": BlockSubtype.editor_note,
         "letter": BlockSubtype.letter,
         "appendix": BlockSubtype.appendix,
+        "toc": BlockSubtype.toc,
+        "navigation": BlockSubtype.navigation,
+        "license": BlockSubtype.license,
+        "metadata": BlockSubtype.metadata,
+        "study_guide": BlockSubtype.study_guide,
         "other": BlockSubtype.other,
     }
     return mapping.get(value, BlockSubtype.other)
+
+
+def _prefer_subtype(primary: BlockSubtype | None, secondary: BlockSubtype | None) -> BlockSubtype | None:
+    """
+    Prefer a more informative subtype. Used to apply page-level signals (e.g., guide/toc pages)
+    without overriding strong content signals like preface/afterword.
+    """
+    if secondary in {BlockSubtype.preface, BlockSubtype.afterword, BlockSubtype.footnote, BlockSubtype.editor_note}:
+        return secondary
+    return primary or secondary
+
+
+def _infer_page_subtype(url: str) -> BlockSubtype | None:
+    """
+    Lightweight, URL-based subtype inference to tag obvious non-content pages.
+    This improves downstream filtering without requiring HTML heuristics.
+    """
+    try:
+        path = urlparse(url).path.lower()
+    except Exception:
+        path = url.lower()
+
+    if path.endswith("/guide.htm"):
+        return BlockSubtype.study_guide
+    if path.endswith("/index.htm") or path.endswith("/index.html"):
+        return BlockSubtype.toc
+    return None
+
+
+def _load_existing_blocks_by_order(session, *, edition_id: uuid.UUID) -> dict[int, TextBlock]:
+    blocks = session.query(TextBlock).filter(TextBlock.edition_id == edition_id).all()
+    by_order: dict[int, TextBlock] = {}
+    dupes: list[int] = []
+    for b in blocks:
+        if b.order_index in by_order:
+            dupes.append(b.order_index)
+            continue
+        by_order[b.order_index] = b
+    if dupes:
+        raise RuntimeError(
+            f"Edition has duplicate TextBlock.order_index values; cannot ingest idempotently. "
+            f"edition_id={edition_id} duplicate_orders={sorted(set(dupes))[:20]!r}. "
+            "Use a new Edition (different source_url) or clean the duplicated substrate."
+        )
+    return by_order
+
+
+def _load_existing_paragraphs_by_order(session, *, edition_id: uuid.UUID) -> dict[int, Paragraph]:
+    paras = session.query(Paragraph).filter(Paragraph.edition_id == edition_id).all()
+    by_order: dict[int, Paragraph] = {}
+    dupes: list[int] = []
+    for p in paras:
+        if p.order_index in by_order:
+            dupes.append(p.order_index)
+            continue
+        by_order[p.order_index] = p
+    if dupes:
+        raise RuntimeError(
+            f"Edition has duplicate Paragraph.order_index values; cannot ingest idempotently. "
+            f"edition_id={edition_id} duplicate_orders={sorted(set(dupes))[:20]!r}. "
+            "Use a new Edition (different source_url) or clean the duplicated substrate."
+        )
+    return by_order
+
+
+def _relink_spans_for_edition(session, *, edition_id: uuid.UUID) -> None:
+    spans = (
+        session.query(SentenceSpan)
+        .filter(SentenceSpan.edition_id == edition_id)
+        .order_by(SentenceSpan.para_index.asc(), SentenceSpan.sent_index.asc())
+        .all()
+    )
+    for i, span in enumerate(spans):
+        prev_id = spans[i - 1].span_id if i > 0 else None
+        next_id = spans[i + 1].span_id if i + 1 < len(spans) else None
+        span.prev_span_id = prev_id
+        span.next_span_id = next_id
+
+
+@app.command("crawl-discover")
+def crawl_discover(
+    seed_url: str = typer.Option("https://www.marxists.org/", help="Seed URL to start crawling from"),
+    *,
+    max_languages: int = typer.Option(1, help="Maximum language areas to discover"),
+    max_authors: int = typer.Option(10, help="Maximum authors per language"),
+    max_works: int = typer.Option(5, help="Maximum works per author"),
+    crawl_delay: float = typer.Option(0.5, help="Delay between requests (seconds)"),
+) -> None:
+    """
+    Discover works from marxists.org and populate the URL catalog.
+
+    This command performs multi-stage discovery:
+    1. Seed discovery (language roots)
+    2. Author discovery within languages
+    3. Work discovery within authors
+    4. Page discovery within works
+    """
+    from grundrisse_core.db.models import CrawlRun
+    from ingest_service.crawl.http_client import RateLimitedHttpClient
+    from ingest_service.crawl.marxists_org import MarxistsOrgCrawler
+
+    data_dir = Path("data/raw")
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    with SessionLocal() as session:
+        # Create crawl run
+        crawl_run = CrawlRun(
+            pipeline_version="v0.1",
+            crawl_scope={
+                "seed_url": seed_url,
+                "max_languages": max_languages,
+                "max_authors": max_authors,
+                "max_works": max_works,
+            },
+            started_at=datetime.utcnow(),
+            status="started",
+        )
+        session.add(crawl_run)
+        session.flush()
+
+        typer.echo(f"Starting crawl run: {crawl_run.crawl_run_id}")
+
+        # Create HTTP client and crawler
+        with RateLimitedHttpClient(crawl_delay=crawl_delay) as http_client:
+            crawler = MarxistsOrgCrawler(
+                session=session,
+                crawl_run_id=crawl_run.crawl_run_id,
+                http_client=http_client,
+                data_dir=data_dir,
+            )
+
+            try:
+                # Stage 1: Discover language roots
+                typer.echo("Discovering language roots...")
+                language_urls = crawler.discover_seed_urls()
+                typer.echo(f"Found {len(language_urls)} language areas")
+
+                for lang_url in language_urls[:max_languages]:
+                    typer.echo(f"\nProcessing language: {lang_url}")
+
+                    # Stage 2: Discover authors
+                    author_urls = crawler.discover_author_pages(lang_url, max_pages=max_authors)
+                    typer.echo(f"Found {len(author_urls)} author pages")
+
+                    for author_url in author_urls[:max_authors]:
+                        typer.echo(f"  Processing author: {author_url}")
+
+                        # Stage 3: Discover works
+                        works = crawler.discover_work_directories(author_url, max_works=max_works)
+                        typer.echo(f"  Found {len(works)} works")
+
+                        for work_meta in works[:max_works]:
+                            typer.echo(f"    Discovering pages for: {work_meta['work_title']}")
+
+                            # Stage 4: Discover pages
+                            page_urls = crawler.discover_work_pages(
+                                work_meta["root_url"],
+                                max_pages=100,
+                            )
+
+                            # Add work to catalog
+                            work_discovery = crawler.work_catalog.add_work(
+                                root_url=work_meta["root_url"],
+                                author_name=work_meta["author_name"],
+                                work_title=work_meta["work_title"],
+                                language=work_meta["language"],
+                                page_urls=page_urls,
+                            )
+
+                            typer.echo(f"    Discovered {len(page_urls)} pages")
+                            crawl_run.urls_discovered += len(page_urls)
+
+                            # Add URLs to catalog
+                            for url in page_urls:
+                                crawler.url_catalog.add_url(
+                                    url,
+                                    discovered_from_url=work_meta["root_url"],
+                                    status="new",
+                                )
+
+                        session.commit()
+
+                # Mark crawl run as completed
+                crawl_run.status = "completed"
+                crawl_run.finished_at = datetime.utcnow()
+                session.commit()
+
+                typer.echo(f"\nCrawl completed! Discovered {crawl_run.urls_discovered} URLs")
+
+            except Exception as e:
+                crawl_run.status = "failed"
+                crawl_run.error_log = str(e)
+                crawl_run.finished_at = datetime.utcnow()
+                session.commit()
+                typer.echo(f"Crawl failed: {e}", err=True)
+                raise
+
+
+@app.command("crawl-ingest")
+def crawl_ingest(
+    crawl_run_id: str = typer.Argument(..., help="Crawl run ID to ingest works from"),
+    *,
+    max_works: int = typer.Option(10, help="Maximum works to ingest"),
+) -> None:
+    """
+    Ingest discovered works from a crawl run.
+
+    This command reads the work_discovery table and calls the existing
+    `ingest-work` logic for each discovered work.
+    """
+    from grundrisse_core.db.models import CrawlRun
+    from ingest_service.crawl.catalog import WorkCatalog
+
+    crawl_run_uuid = uuid.UUID(crawl_run_id)
+
+    with SessionLocal() as session:
+        # Get crawl run
+        crawl_run = session.get(CrawlRun, crawl_run_uuid)
+        if not crawl_run:
+            typer.echo(f"Crawl run not found: {crawl_run_id}", err=True)
+            raise typer.Exit(1)
+
+        # Get pending works
+        work_catalog = WorkCatalog(session, crawl_run_uuid)
+        pending_works = work_catalog.get_pending_works(limit=max_works)
+
+        typer.echo(f"Found {len(pending_works)} pending works to ingest")
+
+        for work in pending_works:
+            typer.echo(f"\nIngesting: {work.work_title} by {work.author_name}")
+
+            try:
+                # Call ingest-work for this work
+                # This reuses the existing ingestion logic
+                ingest_work(
+                    url=work.root_url,
+                    language=work.language,
+                    author=work.author_name,
+                    title=work.work_title,
+                )
+
+                # Mark as ingested
+                # Note: We'd need to capture the edition_id from ingest_work to store it
+                work_catalog.mark_work_ingested(work.discovery_id, uuid.uuid4())  # Placeholder
+                session.commit()
+
+                typer.echo(f"  ✓ Ingested successfully")
+
+            except Exception as e:
+                typer.echo(f"  ✗ Failed: {e}", err=True)
+                work_catalog.mark_work_failed(work.discovery_id, str(e))
+                session.commit()

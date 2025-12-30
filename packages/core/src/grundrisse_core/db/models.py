@@ -105,6 +105,7 @@ class TextBlock(Base):
         Enum(BlockSubtype, native_enum=False), nullable=True
     )
     title: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False)
     path: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
@@ -395,6 +396,62 @@ class SpanAlignment(Base):
     extraction_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("extraction_run.run_id"))
 
 
+class CrawlRun(Base):
+    __tablename__ = "crawl_run"
+
+    crawl_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    git_commit_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    crawl_scope: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="started")
+    error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+    urls_discovered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    urls_fetched: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    urls_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class UrlCatalogEntry(Base):
+    __tablename__ = "url_catalog_entry"
+
+    url_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    url_canonical: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    discovered_from_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    crawl_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crawl_run.crawl_run_id"))
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="new")
+    http_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    content_type: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    etag: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    last_modified: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    raw_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (Index("ix_url_catalog_status", "status"), Index("ix_url_catalog_sha256", "content_sha256"))
+
+
+class WorkDiscovery(Base):
+    __tablename__ = "work_discovery"
+
+    discovery_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crawl_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crawl_run.crawl_run_id"))
+    root_url: Mapped[str] = mapped_column(Text, nullable=False)
+    author_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    work_title: Mapped[str] = mapped_column(String(1024), nullable=False)
+    language: Mapped[str] = mapped_column(String(32), nullable=False)
+    page_urls: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
+    discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    ingestion_status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    edition_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("edition.edition_id"), nullable=True
+    )
+
+    __table_args__ = (Index("ix_work_discovery_ingestion_status", "ingestion_status"),)
+
+
 def import_models() -> None:
     # Used by Alembic autogenerate. Keep import side effects explicit.
     _ = (
@@ -417,4 +474,7 @@ def import_models() -> None:
         CitationEdge,
         ClaimConceptLink,
         SpanAlignment,
+        CrawlRun,
+        UrlCatalogEntry,
+        WorkDiscovery,
     )

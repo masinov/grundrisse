@@ -11,7 +11,9 @@ from grundrisse_contracts import schemas as contracts_schemas
 from grundrisse_core.db.models import (
     Claim,
     ClaimEvidence,
+    Concept,
     ConceptMention,
+    Edition,
     ExtractionRun,
     Paragraph,
     SentenceSpan,
@@ -23,6 +25,7 @@ from grundrisse_core.db.session import SessionLocal
 from nlp_pipeline.llm.zai_glm import ZaiGlmClient
 from nlp_pipeline.settings import settings
 from nlp_pipeline.stage_a.run import Schemas, run_stage_a_for_edition
+from nlp_pipeline.stage_b.run import SchemasB, run_stage_b_for_work
 
 app = typer.Typer(help="NLP pipeline (Stage A/B, canonicalization, linking).")
 
@@ -33,6 +36,10 @@ def stage_a(
     *,
     progress_every: int = typer.Option(10, help="Print progress every N paragraphs."),
     commit_every: int = typer.Option(5, help="Commit DB transaction every N paragraphs."),
+    include_apparatus: bool = typer.Option(
+        False,
+        help="Include obvious non-content apparatus blocks (TOC/study guide/navigation/license).",
+    ),
 ) -> None:
     if not settings.zai_api_key:
         raise typer.BadParameter(
@@ -52,12 +59,42 @@ def stage_a(
             schemas=schemas,
             progress_every=progress_every,
             commit_every=commit_every,
+            include_apparatus=include_apparatus,
         )
 
 
 @app.command("stage-b")
-def stage_b(work_id: str) -> None:
-    raise NotImplementedError("stage-b is not implemented yet (mention clustering + concept canonicalization).")
+def stage_b(
+    work_id: str,
+    *,
+    progress_every: int = typer.Option(20, help="Print progress every N clusters."),
+    commit_every: int = typer.Option(10, help="Commit DB transaction every N clusters."),
+    min_cluster_size: int = typer.Option(2, help="Minimum cluster size to canonicalize."),
+    max_cluster_size: int = typer.Option(50, help="Maximum mentions sent to LLM per cluster."),
+    include_apparatus: bool = typer.Option(
+        False,
+        help="Include obvious non-content apparatus blocks (TOC/study guide/navigation/license).",
+    ),
+) -> None:
+    if not settings.zai_api_key:
+        raise typer.BadParameter("Missing GRUNDRISSE_ZAI_API_KEY.")
+    work_uuid = uuid.UUID(work_id)
+
+    schema_dir = files(contracts_schemas)
+    b = json.loads((schema_dir / "task_b_concept_canonicalize.json").read_text(encoding="utf-8"))
+    schemas = SchemasB(b=b)
+
+    with ZaiGlmClient(api_key=settings.zai_api_key, base_url=settings.zai_base_url, model=settings.zai_model) as llm:
+        run_stage_b_for_work(
+            work_id=work_uuid,
+            llm=llm,
+            schemas=schemas,
+            max_cluster_size=max_cluster_size,
+            min_cluster_size=min_cluster_size,
+            progress_every=progress_every,
+            commit_every=commit_every,
+            include_apparatus=include_apparatus,
+        )
 
 
 @app.command("inspect-edition")
@@ -163,6 +200,170 @@ def inspect_edition(
                 print("  evidence:")
                 for sent_index, text in ev_spans:
                     print(f"   - [{sent_index}] {text}")
+
+
+@app.command("sample-edition")
+def sample_edition(
+    edition_id: str,
+    *,
+    n: int = typer.Option(10, help="Number of random paragraphs to sample."),
+    include_no_mentions: int = typer.Option(3, help="Also sample N paragraphs that have no mentions."),
+    include_no_claims: int = typer.Option(3, help="Also sample N paragraphs that have no claims."),
+    max_mentions: int = typer.Option(20, help="Max mentions printed per paragraph."),
+    max_claims: int = typer.Option(5, help="Max claims printed per paragraph."),
+) -> None:
+    """
+    Targeted spot-check sampler for validating Stage A/B outputs.
+    Reconstructs paragraph text from sentence spans, prints mentions (with concept label if assigned),
+    and prints a few claims with evidence.
+    """
+    edition_uuid = uuid.UUID(edition_id)
+    with SessionLocal() as session:
+        ed = session.get(Edition, edition_uuid)
+        if ed is None:
+            raise typer.BadParameter(f"Edition not found: {edition_uuid}")
+
+        def paragraph_text(para_id: uuid.UUID) -> str:
+            spans = session.execute(
+                select(SentenceSpan.sent_index, SentenceSpan.text)
+                .where(SentenceSpan.para_id == para_id)
+                .order_by(SentenceSpan.sent_index)
+            ).all()
+            return " ".join((t or "").strip() for _, t in spans).strip()
+
+        def print_para(para: Paragraph) -> None:
+            block = session.get(TextBlock, para.block_id)
+            block_title = block.title if block else None
+            print(f"\n[para] para_id={para.para_id} block_title={block_title!r}")
+            text = paragraph_text(para.para_id)
+            print(f"[para] text={text[:1200]!r}")
+
+            mentions = session.execute(
+                select(
+                    ConceptMention.mention_id,
+                    ConceptMention.surface_form,
+                    ConceptMention.normalized_form,
+                    ConceptMention.is_technical,
+                    ConceptMention.concept_id,
+                )
+                .join(SentenceSpan, SentenceSpan.span_id == ConceptMention.span_id)
+                .where(SentenceSpan.para_id == para.para_id)
+                .limit(max_mentions)
+            ).all()
+            if mentions:
+                print("[para] mentions:")
+                for mid, surface, norm, is_tech, concept_id in mentions:
+                    label = None
+                    if concept_id is not None:
+                        c = session.get(Concept, concept_id)
+                        label = c.label_canonical if c else None
+                    print(
+                        f" - mention_id={mid} concept={label!r} surface={surface!r} "
+                        f"norm={norm!r} technical={is_tech}"
+                    )
+            else:
+                print("[para] mentions: (none)")
+
+            claims = session.execute(
+                select(
+                    Claim.claim_id,
+                    Claim.claim_text_canonical,
+                    Claim.claim_type,
+                    Claim.polarity,
+                    Claim.modality,
+                    Claim.dialectical_status,
+                    ClaimEvidence.group_id,
+                )
+                .select_from(SpanGroup)
+                .join(ClaimEvidence, ClaimEvidence.group_id == SpanGroup.group_id)
+                .join(Claim, Claim.claim_id == ClaimEvidence.claim_id)
+                .where(SpanGroup.para_id == para.para_id)
+                .limit(max_claims)
+            ).all()
+            if claims:
+                print("[para] claims:")
+                for claim_id, claim_text, claim_type, polarity, modality, dialectical_status, group_id in claims:
+                    print(
+                        f" - claim_id={claim_id} type={claim_type} polarity={polarity} "
+                        f"modality={modality} dialectical={dialectical_status}"
+                    )
+                    print(f"   claim={claim_text.strip()[:400]!r}")
+                    ev_spans = session.execute(
+                        select(SentenceSpan.sent_index, SentenceSpan.text)
+                        .select_from(SpanGroupSpan)
+                        .join(SentenceSpan, SentenceSpan.span_id == SpanGroupSpan.span_id)
+                        .where(SpanGroupSpan.group_id == group_id)
+                        .order_by(SpanGroupSpan.order_index)
+                    ).all()
+                    for sent_index, span_text in ev_spans:
+                        print(f"    - [{sent_index}] {span_text}")
+            else:
+                print("[para] claims: (none)")
+
+        # Random sample.
+        if n > 0:
+            paras = session.execute(
+                select(Paragraph)
+                .where(Paragraph.edition_id == edition_uuid)
+                .order_by(func.random())
+                .limit(n)
+            ).scalars().all()
+            print(f"[sample] edition_id={edition_uuid} language={ed.language} url={ed.source_url!r}")
+            print(f"[sample] random_paragraphs={len(paras)}")
+            for p in paras:
+                print_para(p)
+
+        # Paragraphs with spans but no mentions.
+        if include_no_mentions > 0:
+            paras = session.execute(
+                select(Paragraph)
+                .where(Paragraph.edition_id == edition_uuid)
+                .where(
+                    select(func.count())
+                    .select_from(SentenceSpan)
+                    .where(SentenceSpan.para_id == Paragraph.para_id)
+                    .scalar_subquery()
+                    > 0
+                )
+                .where(
+                    select(func.count())
+                    .select_from(ConceptMention)
+                    .join(SentenceSpan, SentenceSpan.span_id == ConceptMention.span_id)
+                    .where(SentenceSpan.para_id == Paragraph.para_id)
+                    .scalar_subquery()
+                    == 0
+                )
+                .limit(include_no_mentions)
+            ).scalars().all()
+            print(f"\n[sample] no_mentions_paragraphs={len(paras)}")
+            for p in paras:
+                print_para(p)
+
+        # Paragraphs with spans but no claims.
+        if include_no_claims > 0:
+            paras = session.execute(
+                select(Paragraph)
+                .where(Paragraph.edition_id == edition_uuid)
+                .where(
+                    select(func.count())
+                    .select_from(SentenceSpan)
+                    .where(SentenceSpan.para_id == Paragraph.para_id)
+                    .scalar_subquery()
+                    > 0
+                )
+                .where(
+                    select(func.count())
+                    .select_from(SpanGroup)
+                    .join(ClaimEvidence, ClaimEvidence.group_id == SpanGroup.group_id)
+                    .where(SpanGroup.para_id == Paragraph.para_id)
+                    .scalar_subquery()
+                    == 0
+                )
+                .limit(include_no_claims)
+            ).scalars().all()
+            print(f"\n[sample] no_claims_paragraphs={len(paras)}")
+            for p in paras:
+                print_para(p)
 
 
 @app.command("modality-stats")

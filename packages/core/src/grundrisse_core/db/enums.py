@@ -33,6 +33,11 @@ class BlockSubtype(str, enum.Enum):
     editor_note = "editor_note"
     letter = "letter"
     appendix = "appendix"
+    toc = "toc"
+    navigation = "navigation"
+    license = "license"
+    metadata = "metadata"
+    study_guide = "study_guide"
     other = "other"
 
 

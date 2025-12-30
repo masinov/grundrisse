@@ -180,5 +180,16 @@ def _is_noise_paragraph(text: str) -> bool:
         or t.startswith("back ")
         or "mia :" in t
         or "marxists internet archive" in t
+        or "marx-engels archive" in t
+        or "more study guides" in t
+        or "creative commons" in t
+        or t.startswith("written:")
+        or t.startswith("first published:")
+        or t.startswith("transcribed")
+        or t.startswith("translated:")
+        or t.startswith("proofed:")
+        or t.startswith("copyleft:")
+        or t.startswith("permission is granted to copy")
+        or t.startswith("see note in:")
         or t == "index"
     )
