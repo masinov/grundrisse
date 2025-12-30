@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "surface_form": { "type": "string" },
+          "normalized_form": { "type": ["string", "null"] },
+          "start_char_in_sentence": { "type": ["integer", "null"] },
+          "end_char_in_sentence": { "type": ["integer", "null"] },
+          "sentence_index": { "type": "integer" },
+          "is_technical_term": { "type": "boolean" },
+          "candidate_gloss": { "type": ["string", "null"] },
+          "confidence": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
+        },
+        "required": ["surface_form", "sentence_index", "is_technical_term"]
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_text_canonical": { "type": "string" },
+          "claim_type": {
+            "type": "string",
+            "enum": ["definition", "thesis", "empirical", "normative", "methodological", "objection", "reply"]
+          },
+          "polarity": { "type": "string", "enum": ["assert", "deny", "conditional"] },
+          "modality": {
+            "type": ["string", "null"],
+            "enum": ["is", "will", "would", "can", "could", "cannot", "must", "should", "ought", "may", "appears_as", "becomes", "in_essence_is", null]
+          },
+          "dialectical_status": {
+            "type": "string",
+            "enum": ["none", "tension_pair", "appearance_essence", "developmental"]
+          },
+          "scope": {
+            "type": ["object", "null"],
+            "properties": {
+              "domain": { "type": ["string", "null"] },
+              "condition": { "type": ["string", "null"] }
+            },
+            "additionalProperties": true
+          },
+          "attribution": { "type": "string", "enum": ["self", "citation", "interlocutor"] },
+          "attributed_to": {
+            "type": ["object", "null"],
+            "properties": {
+              "author_name": { "type": ["string", "null"] },
+              "work_hint": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          },
+          "citation_marker": { "type": ["string", "null"] },
+          "evidence_sentence_indices": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 1
+          },
+          "about_terms": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
+        },
+        "required": ["claim_text_canonical", "claim_type", "evidence_sentence_indices"]
+      }
+    }
+  },
+  "required": ["mentions", "claims"]
+}
+

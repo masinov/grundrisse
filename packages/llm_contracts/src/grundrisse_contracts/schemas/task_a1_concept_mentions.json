@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "surface_form": { "type": "string", "description": "Exact substring in the sentence." },
+          "normalized_form": { "type": ["string", "null"] },
+          "start_char_in_sentence": { "type": ["integer", "null"] },
+          "end_char_in_sentence": { "type": ["integer", "null"] },
+          "sentence_index": { "type": "integer" },
+          "is_technical_term": { "type": ["boolean", "null"] },
+          "candidate_gloss": { "type": ["string", "null"] },
+          "confidence": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
+        },
+        "required": ["surface_form", "sentence_index", "is_technical_term"]
+      }
+    }
+  },
+  "required": ["mentions"]
+}

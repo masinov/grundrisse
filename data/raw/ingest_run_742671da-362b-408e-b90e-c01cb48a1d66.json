@@ -1,0 +1,50 @@
+{
+  "root_url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm",
+  "base_prefix": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/",
+  "urls": [
+    "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+    "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch02.htm",
+    "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch04.htm",
+    "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/index.htm",
+    "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm"
+  ],
+  "snapshots": [
+    {
+      "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch01.htm",
+      "sha256": "adcc9801c01581c62d3688402b15ee41205798d4f76d5bc289cf2803be120459",
+      "raw_path": "data/raw/adcc9801c01581c62d3688402b15ee41205798d4f76d5bc289cf2803be120459.html",
+      "meta_path": "data/raw/adcc9801c01581c62d3688402b15ee41205798d4f76d5bc289cf2803be120459.json",
+      "content_type": "text/html"
+    },
+    {
+      "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch02.htm",
+      "sha256": "6c16c95e9122979011b01399110f6f07a6c91d0f09c27aa2484899e9e79a7432",
+      "raw_path": "data/raw/6c16c95e9122979011b01399110f6f07a6c91d0f09c27aa2484899e9e79a7432.html",
+      "meta_path": "data/raw/6c16c95e9122979011b01399110f6f07a6c91d0f09c27aa2484899e9e79a7432.json",
+      "content_type": "text/html"
+    },
+    {
+      "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/ch04.htm",
+      "sha256": "ff5a45048e5400cafb29a3c817f75e20a2c3b42fbab2c0fc0934532f3cff6c17",
+      "raw_path": "data/raw/ff5a45048e5400cafb29a3c817f75e20a2c3b42fbab2c0fc0934532f3cff6c17.html",
+      "meta_path": "data/raw/ff5a45048e5400cafb29a3c817f75e20a2c3b42fbab2c0fc0934532f3cff6c17.json",
+      "content_type": "text/html"
+    },
+    {
+      "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/index.htm",
+      "sha256": "8c21591f08e06f82bddc7dd6373ca910ecf007210fe7a36102932f231325efba",
+      "raw_path": "data/raw/8c21591f08e06f82bddc7dd6373ca910ecf007210fe7a36102932f231325efba.html",
+      "meta_path": "data/raw/8c21591f08e06f82bddc7dd6373ca910ecf007210fe7a36102932f231325efba.json",
+      "content_type": "text/html"
+    },
+    {
+      "url": "https://www.marxists.org/archive/marx/works/1848/communist-manifesto/preface.htm",
+      "sha256": "2d81e689e879c27aac37a6d8e4e10fccbf87a76fc06f6b39a4807265b2ea2393",
+      "raw_path": "data/raw/2d81e689e879c27aac37a6d8e4e10fccbf87a76fc06f6b39a4807265b2ea2393.html",
+      "meta_path": "data/raw/2d81e689e879c27aac37a6d8e4e10fccbf87a76fc06f6b39a4807265b2ea2393.json",
+      "content_type": "text/html"
+    }
+  ],
+  "started_at": "2025-12-29T23:05:37.149663",
+  "finished_at": "2025-12-29T23:05:40.377295"
+}

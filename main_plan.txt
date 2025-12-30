@@ -1,0 +1,750 @@
+## 1) Objective and non-negotiable constraints
+
+### Objective
+
+Build a philologically rigorous, versioned, auditable semantic infrastructure over marxists.org texts that supports:
+
+* Concept extraction and canonicalization across authors, editions, and translations
+* Claim extraction and canonicalization
+* Cross-author cross-referencing (equivalence, refinement, application, critique, contradiction including dialectical forms)
+* Explicit translation/edition alignment
+* A provenance-first pipeline where every semantic artifact is grounded in immutable evidence spans
+
+### Non-negotiables
+
+1. **Immutable substrate**: normalized source text is never mutated; corrections create a new edition/version.
+2. **Atomic evidence**: evidence units are **SentenceSpans**; paragraphs exist as context containers.
+3. **Paragraph-in, sentence-IDs-out**: LLM calls use paragraph/section context but must reference sentence IDs/indices.
+4. **Provenance for everything**: every extraction/merge/link has an ExtractionRun record (prompt versions, params, code commit).
+5. **Conservative ontology**: prefer “distinct” over “merged” when senses/time differ.
+6. **Dialectical-aware claims**: store dialectical form explicitly; do not flatten into binary logic.
+7. **Alignment is explicit**: do not infer translation equivalence only from vectors.
+
+---
+
+## 2) System components and repositories
+
+### 2.1 Codebases
+
+* **ingest-service**: fetch, normalize, parse, segment, store text substrate.
+* **nlp-pipeline**: orchestrated extraction jobs (mentions, claims, canonicalization, linking, alignment).
+* **llm-contracts**: prompt templates + strict JSON schemas + validators.
+* **evaluation-suite**: gold sets, benchmarks, dashboards.
+* **ops-infra**: workflow engine (Temporal/Prefect/Airflow), queues, rate limiting, retries, observability.
+
+### 2.2 Datastores (logical roles)
+
+* **Raw store**: HTML/TXT/PDF snapshots + metadata (object storage).
+* **Relational store** (Postgres): canonical text substrate + spans + runs + extracted objects (authoritative).
+* **Search store** (OpenSearch/Elasticsearch): optional, for lexical indexing of spans and claims.
+* **Vector store** (pgvector / dedicated vector DB): embeddings for spans/concepts/claims.
+* **Graph store** (Neo4j or RDF store): concept/claim nodes and relations (optional in early phases; can be derived from relational tables).
+
+Graph can be built later from relational tables; do not block early milestones on graph tech choice.
+
+---
+
+## 3) Data model v1 (freeze this before coding pipelines)
+
+### 3.1 Identity and versioning
+
+**Author**
+
+* author_id (registry ID)
+* name_canonical, name_variants[]
+* birth_year, death_year (optional)
+
+**Work**
+
+* work_id (registry ID)
+* author_id
+* title
+* work_type (book/article/letter/speech)
+* composition_date (nullable/range)
+* publication_date (nullable/range)
+* original_language
+* source_urls[]
+
+**Edition**
+
+* edition_id (registry ID)
+* work_id
+* language
+* translator/editor (nullable)
+* publication_year (nullable)
+* source_url
+* ingest_run_id
+
+### 3.2 Text substrate
+
+**TextBlock**
+
+* block_id
+* edition_id
+* parent_block_id
+* block_type (chapter/section/subsection)
+* title (nullable)
+* order_index
+* path (materialized, e.g. “1.3.2”)
+
+**Paragraph**
+
+* para_id
+* edition_id
+* block_id
+* order_index
+* sentence_span_ids[] (ordered)
+* start_char, end_char (optional)
+* para_hash
+
+**SentenceSpan** (atomic evidence)
+
+* span_id (ULID)
+* edition_id
+* block_id
+* para_id
+* para_index, sent_index
+* start_char, end_char (within edition)
+* text (normalized sentence)
+* text_hash
+* prev_span_id, next_span_id
+
+**SpanGroup** (evidence grouping)
+
+* group_id
+* edition_id
+* para_id (optional but recommended)
+* span_ids[] (ordered)
+* group_hash
+* created_run_id
+
+### 3.3 Provenance
+
+**ExtractionRun**
+
+* run_id
+* pipeline_version
+* git_commit_hash
+* model_name (“GLM-4.7”)
+* model_fingerprint (if available)
+* prompt_name, prompt_version
+* params (temperature, etc.)
+* input_refs (para_ids/span_ids/group_ids; JSON)
+* prompt_tokens, completion_tokens, cost_usd (even if “infinite,” still track)
+* output_hash
+* started_at, finished_at
+* status, error_log (nullable)
+
+### 3.4 Concepts
+
+**Concept**
+
+* concept_id (ULID)
+* label_canonical (e.g., “Alienation (Entfremdung)”)
+* label_short (“Alienation”)
+* original_term_vernacular (nullable; e.g., “Entfremdung”)
+* aliases[] (incl. translations)
+* gloss (1–2 sentences)
+* sense_notes (nullable)
+* root_concept_id (nullable; groups temporal senses)
+* parent_concept_id (nullable; taxonomy later)
+* temporal_scope (JSON: start_year, end_year, note)
+* status (proposed/canonical/validated)
+* created_run_id
+* confidence
+
+**ConceptMention** (mention-first strategy)
+
+* mention_id
+* span_id (SentenceSpan FK)
+* start_char_in_sentence, end_char_in_sentence
+* surface_form
+* normalized_form (optional)
+* is_technical (bool)
+* extraction_run_id
+* confidence
+
+**ConceptEvidence**
+
+* concept_id
+* group_id (SpanGroup FK)
+* evidence_type (definition/central/contrast/example)
+* extraction_run_id
+* confidence
+
+### 3.5 Claims
+
+**Claim**
+
+* claim_id
+* claim_text_canonical
+* claim_type (definition/thesis/empirical/normative/method/objection/reply)
+* polarity (assert/deny/conditional)
+* modality (is/must/should/may/appears-as/becomes/etc.)
+* scope (JSON: conditions, domain qualifiers, temporal notes)
+* dialectical_status (none/tension_pair/appearance_essence/developmental)
+* dialectical_pair_id (self-FK nullable)
+* about_concept_ids[] (array; filled after mapping)
+* status (proposed/canonical/validated)
+* created_run_id
+* confidence
+
+**ClaimEvidence**
+
+* claim_id
+* group_id (SpanGroup FK)
+* evidence_role (direct_quote/paraphrase_support/context)
+* extraction_run_id
+* confidence
+
+**ClaimLink** (cross-reference)
+
+* link_id
+* claim_id_src, claim_id_dst
+* link_type:
+
+  * equivalent
+  * refines
+  * applies
+  * criticizes
+  * logical_contradiction
+  * apparent_contradiction
+  * dialectical_sublation (optional)
+* justification (short)
+* evidence_group_ids_src[], evidence_group_ids_dst[]
+* extraction_run_id
+* confidence
+
+### 3.6 Alignment
+
+**SpanAlignment** (hierarchical, explicit)
+
+* alignment_id
+* work_id
+* edition_id_a, edition_id_b
+* block_id_a, block_id_b (nullable; for chapter/section alignment)
+* para_id_a, para_id_b (nullable)
+* group_id_a, group_id_b (nullable; sentence-group alignment)
+* alignment_type (translation_of/parallel/loose_parallel)
+* confidence
+* extraction_run_id
+
+---
+
+## 4) Pipeline architecture (jobs, ordering, and invariants)
+
+### 4.1 Workflow engine conventions
+
+* Every job is **idempotent**: if input hashes and prompt versions match, skip.
+* Every job writes an ExtractionRun.
+* Every job validates strict JSON outputs against a schema.
+* Failures are retriable; partial outputs are not committed unless fully validated.
+
+### 4.2 Processing order (must follow)
+
+1. **Ingest & normalize**
+2. **Segment** → TextBlocks, Paragraphs, SentenceSpans
+3. **Index substrate** (lexical + embeddings for SentenceSpans)
+4. **Stage A (extraction)**: concept mentions + claims per paragraph
+5. **Stage B (canonicalize)**: concepts (within work → within author → cross-author)
+6. **Claim canonicalization** (within work → within author)
+7. **Concept↔Claim mapping** (populate about_concept_ids)
+8. **Alignment** (chapter/section → paragraph → sentence groups)
+9. **Cross-author linking** (claims; gated candidates only)
+10. **Human review loops** (optional but recommended for “validated” status)
+
+---
+
+## 5) Ingestion and segmentation (philological substrate)
+
+### 5.1 Acquisition
+
+* Fetch HTML pages and any alternate formats.
+* Store raw bytes + timestamp + URL + HTTP headers + checksum.
+
+### 5.2 Normalization
+
+* Strip boilerplate navigation and site chrome.
+* Preserve:
+
+  * headings
+  * italics/quotes markers if present (useful cues)
+  * footnote markers
+* Unicode normalize (NFKC), normalize whitespace, preserve paragraph boundaries.
+
+### 5.3 Structure parsing
+
+* Derive TextBlocks from headings:
+
+  * heuristics using HTML tags + patterns (“Chapter 1”, roman numerals, etc.)
+* Create Paragraph objects.
+* Sentence splitting:
+
+  * deterministic splitter (language-aware)
+  * LLM fallback for pathological cases (abbreviations, German punctuation, etc.)
+* Persist SentenceSpans and map them back to paragraph order.
+
+### 5.4 Quality checks
+
+* Ensure all paragraph sentence spans concatenate (minus normalization) to paragraph text.
+* Validate prev/next links cover full edition sequence.
+
+---
+
+## 6) Stage A extraction (paragraph context, sentence IDs output)
+
+### 6.1 General calling pattern
+
+**Input unit**: Paragraph (or short section window of 1–3 paragraphs when needed), structured as:
+
+* metadata (author/work/date/edition language)
+* `sentences[]`: `{sentence_index, span_id, text}`
+
+**Output rule**: All offsets are within sentence text; all evidence references are sentence_index lists (or ranges).
+
+### 6.2 Model tasks (Stage A)
+
+#### Task A1: ConceptMention extraction
+
+Purpose: detect candidate terms without global sense decisions.
+
+Output per mention:
+
+* mention_id (temporary)
+* sentence_index, span_id
+* start_char_in_sentence, end_char_in_sentence
+* surface_form
+* is_technical (bool)
+* candidate_gloss (optional, short)
+* confidence
+
+Commit to ConceptMention table (mention_id becomes persisted).
+
+#### Task A2: Definitional cue tagging (optional but helpful early)
+
+Detect whether any sentence(s) contain:
+
+* explicit definition
+* sharpening/qualification
+* contrast (“not X but Y”, “appears as”)
+
+Output:
+
+* candidate concept surface
+* evidence_sentence_indices[]
+* cue_type (definition/contrast/qualification)
+* confidence
+
+This feeds ConceptEvidence selection later.
+
+#### Task A3: Claim extraction
+
+Purpose: produce atomic claims with dialectical annotations.
+
+Output per claim:
+
+* claim_text (canonicalized but faithful)
+* claim_type
+* polarity
+* modality
+* scope (JSON)
+* dialectical_status (+ optional pair hints)
+* evidence_sentence_indices[] (ordered)
+* about_terms[] (surfaces; later map to Concept)
+* confidence
+
+Pipeline step:
+
+* create SpanGroup from evidence_sentence_indices
+* create Claim + ClaimEvidence
+
+### 6.3 Practical extraction techniques to improve quality
+
+* Provide the model a “do not over-extract” instruction: prefer fewer, higher-confidence claims.
+* Require each claim to cite at least one evidence sentence; reject any claim without evidence.
+* Require scope notes when claims include conditionals (“in capitalism”, “under commodity production”).
+
+---
+
+## 7) Stage B concept canonicalization (“mention first, canonicalize later”)
+
+### 7.1 Clustering before LLM
+
+Build mention clusters using:
+
+* surface form similarity (string + lemma)
+* embedding similarity of sentence context
+* constraints:
+
+  * cluster initially within a single work/edition (highest precision)
+  * then within author
+  * only later cross-author
+
+Each cluster payload includes:
+
+* mention_id, surface_form
+* 1–3 context sentences around each mention
+* work metadata (author/title/year)
+
+### 7.2 Canonicalization prompt (reviewer’s “Marxist Ontologist”)
+
+Adopt the reviewer’s system prompt with these operational requirements:
+
+* Output must include:
+
+  * `concepts[]` with assigned mention_ids
+  * `non_concepts[]` (excluded mention_ids and short reason)
+* “Reasoning trace” must be brief decision notes (bounded length).
+
+### 7.3 Output commit procedure
+
+For each returned concept:
+
+* create Concept row
+* link mention_ids → concept_id
+* store ConceptEvidence:
+
+  * pick best definitional/central mentions by confidence + cue tags
+  * create SpanGroups for definitional evidence if needed
+
+### 7.4 Root concept and temporal senses
+
+When canonicalization suggests temporal variation (1844 vs 1867):
+
+* create:
+
+  * root concept node (optional initially) OR just set root_concept_id later
+* prefer creating separate Concept nodes with shared root_concept_id.
+
+---
+
+## 8) Claim canonicalization (within-work, then within-author)
+
+### 8.1 Clustering
+
+Cluster claims by:
+
+* embedding similarity of claim_text + scope
+* same claim_type
+* same about_concepts overlap (when available)
+
+Canonicalization LLM task:
+
+* merge paraphrases into a single canonical claim
+* preserve variants list (optional, store in JSON)
+* union evidence SpanGroups
+* preserve dialectical_status (if inconsistent among merged candidates, split)
+
+### 8.2 Dialectical pairing
+
+If extractor produced tension pairs:
+
+* enforce `dialectical_pair_id` as self-referencing FK:
+
+  * pair claims within same paragraph or section first
+  * require explicit evidence on both sides
+
+---
+
+## 9) Concept↔Claim mapping (populate about_concept_ids)
+
+### 9.1 Mapping strategy
+
+* Start with about_terms (from claim extraction).
+* Map terms to concepts using:
+
+  * mention overlap in same evidence sentences
+  * concept aliases
+  * LLM disambiguation when multiple concepts match (“value” senses)
+
+Persist:
+
+* Claim.about_concept_ids[]
+* (optional) ClaimConceptLink table if you want per-link provenance.
+
+---
+
+## 10) Alignment (edition/translation) pipeline
+
+### 10.1 Hierarchical alignment stages
+
+#### Stage AL1: Block alignment (chapter/section)
+
+Heuristics:
+
+* matching numbering patterns
+* heading similarity (lexical + embeddings)
+* approximate length ratios
+  LLM only if ambiguous.
+
+Persist SpanAlignment with block_id_a/block_id_b.
+
+#### Stage AL2: Paragraph alignment inside aligned blocks
+
+Heuristics:
+
+* paragraph count alignment
+* anchor phrases (named entities, distinctive terms)
+* length similarity
+  LLM resolves mismatches within a small window.
+
+Persist SpanAlignment with para_id_a/para_id_b.
+
+#### Stage AL3: Sentence-group alignment within aligned paragraph pairs
+
+LLM task:
+
+* input both paragraph sentence lists
+* output alignments as pairs of sentence index ranges (SpanGroups)
+* identify “omitted/added” sentences
+
+Persist SpanAlignment with group_id_a/group_id_b.
+
+### 10.2 Why this matters downstream
+
+* Enables cross-language concept genealogy (vernacular terms)
+* Enables claim comparison across editions without semantic drift
+
+---
+
+## 11) Cross-author cross-referencing (claims and concepts)
+
+### 11.1 Candidate generation (gated; avoid “everything is related”)
+
+Generate candidate claim pairs only if:
+
+* shared about_concept_ids overlap OR shared root_concept_id
+  OR
+* explicit citation relation (later)
+  OR
+* shared vernacular term/translation pair (if available)
+
+Then rank by:
+
+* claim embedding similarity (on canonical claim text + scope + modality)
+* claim_type match
+* time constraints (optional)
+
+### 11.2 Adjudication (LLM)
+
+Provide:
+
+* claim canonical texts
+* 2–5 best evidence SpanGroups each (with sentence texts)
+* concept context: gloss + vernacular + temporal scope
+  Ask for:
+* link_type (enum)
+* confidence
+* short justification referencing evidence
+* explicit “polarity/opposition check”:
+
+  * if opposition detected, forbid `equivalent`
+  * choose `criticizes`, `apparent_contradiction`, `logical_contradiction`, etc.
+
+Commit to ClaimLink.
+
+### 11.3 Contradiction taxonomy
+
+* **logical_contradiction**: same scope/definitions; A asserts P, B asserts ¬P.
+* **apparent_contradiction**: mismatch in scope, modality, definition sense, or level (appearance/essence).
+* **dialectical_sublation** (optional): B explicitly “overcomes” A (Aufhebung-like move); requires strong evidence.
+
+---
+
+## 12) Model inventory (what models/techniques are used where)
+
+### 12.1 GLM-4.7 usage (primary)
+
+* Concept mention extraction (paragraph context)
+* Claim extraction (paragraph context)
+* Concept canonicalization (“Marxist Ontologist”)
+* Claim canonicalization merges/splits
+* Alignment adjudication within candidate paragraph pairs
+* Cross-author claim link adjudication
+
+### 12.2 Embeddings (retrieval + clustering)
+
+* SentenceSpan embeddings (for clustering and candidate generation)
+* Claim embeddings (canonical text + scope)
+* Concept embeddings (gloss + canonical label + key evidence)
+
+Technique notes:
+
+* Use **HyDE**-style query expansion for candidate retrieval if needed:
+
+  * generate “hypothetical definition/statement” then embed
+* Keep embeddings **instruction-tuned for retrieval**, not generic semantic similarity.
+
+### 12.3 Lexical signals
+
+* BM25 for anchors and hard terminology (especially translation alignment and term extraction support).
+
+### 12.4 Validation and guardrails
+
+* JSON schema validation on every output
+* Consistency checks:
+
+  * evidence indices exist
+  * offsets are within sentence length
+  * dialectical_pair_id claims share locality constraint (same paragraph/section)
+
+---
+
+## 13) Human-in-the-loop (recommended, minimal but decisive)
+
+Introduce statuses:
+
+* proposed → canonical → validated
+
+Provide a review UI/workflow for:
+
+* high-impact concept merges/splits
+* high-impact contradiction links
+* vernacular term assignments (Entfremdung vs Entäußerung)
+* temporal scope assignments
+
+Store human actions as:
+
+* “manual runs” with ExtractionRun-like provenance.
+
+---
+
+## 14) Evaluation plan (must exist from the pilot)
+
+### 14.1 Vertical slice corpus
+
+Start with:
+
+* Marx: 1844 Manuscripts (concept-heavy)
+* Marx: Capital Vol 1 Ch 1 (claim-heavy)
+* Lenin: State and Revolution (application/polemic)
+
+### 14.2 Gold tasks
+
+* Concept sense separation:
+
+  * alienation vs externalization (Entfremdung vs Entäußerung)
+  * value senses across early/mature Marx
+* Claim precision:
+
+  * evidence sentence accuracy
+  * scope/modality correctness
+* Cross-author links:
+
+  * Lenin’s references to Marx: correct link types (applies/criticizes/refines)
+* Alignment:
+
+  * aligned sentence groups in bilingual samples where available
+
+### 14.3 Metrics
+
+* Evidence precision: % of extracted claims whose evidence sentences explicitly support the claim.
+* Concept merge precision: human-judged correctness of canonicalization.
+* Link precision (contradiction types): particularly strict.
+
+---
+
+## 15) Implementation phases (deliverables and exit criteria)
+
+### Phase 0 — Scaffold and schema freeze
+
+Deliverables:
+
+* DB schema v1 implemented
+* ExtractionRun logging + prompt registry
+* Ingestion pipeline storing Edition/TextBlocks/Paragraph/SentenceSpan
+
+Exit criteria:
+
+* deterministic re-ingest produces identical hashes and IDs where expected.
+
+### Phase 1 — Stage A extraction (mentions + claims)
+
+Deliverables:
+
+* paragraph-windowed LLM calls
+* ConceptMention + Claim + SpanGroup + ClaimEvidence populated
+* strict validators + retries
+
+Exit criteria:
+
+* pilot texts yield stable extraction with >90% valid JSON outputs and low hallucinated evidence.
+
+### Phase 2 — Stage B concept canonicalization
+
+Deliverables:
+
+* clustering pipeline
+* “Marxist Ontologist” canonicalization and commit logic
+* ConceptEvidence population (definitions)
+
+Exit criteria:
+
+* reviewer-approved concept inventory for pilot texts; low merge errors.
+
+### Phase 3 — Claim canonicalization + dialectical pairing
+
+Deliverables:
+
+* claim clustering and merge/split adjudication
+* dialectical_pair_id enforcement rules
+
+Exit criteria:
+
+* duplicate claims reduced; dialectical pairs appear where expected (appearance/essence, tension).
+
+### Phase 4 — Alignment (if multilingual editions available)
+
+Deliverables:
+
+* block/paragraph heuristics
+* LLM sentence-group alignment within candidate paragraph pairs
+* SpanAlignment records
+
+Exit criteria:
+
+* sample aligned chapters/paragraphs validated by spot checks.
+
+### Phase 5 — Cross-author claim linking
+
+Deliverables:
+
+* gated candidate generator
+* adjudication with polarity/opposition checks
+* ClaimLink population
+
+Exit criteria:
+
+* high precision on a small curated set of known relations/contradictions.
+
+### Phase 6 — Hardening and scale-out
+
+Deliverables:
+
+* incremental ingestion (new works)
+* reprocessing strategies when prompts change
+* dashboards (run health, costs, precision sampling)
+
+Exit criteria:
+
+* reliable operation across a larger corpus slice without schema changes.
+
+---
+
+## 16) Prompt and schema governance (operational discipline)
+
+* Maintain a **Prompt Registry**:
+
+  * name, version, purpose, JSON schema, examples, forbidden behaviors.
+* Any prompt update increments version; downstream artifacts reference prompt_version via ExtractionRun.
+* Reprocessing policies:
+
+  * concept canonicalization updates may require re-linking mentions but not re-ingesting text
+  * claim extraction prompt changes require re-extraction for affected paragraphs only (by input hash).
+
+---
+
+If you want the next iteration to be even more “ready-to-implement,” the fastest step is to produce:
+
+1. the exact JSON schemas for Tasks A1/A3/B (including error fields), and
+2. the clustering heuristics (feature set and thresholds) for concept and claim grouping.

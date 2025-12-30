@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_text_canonical": { "type": "string" },
+          "claim_type": {
+            "type": ["string", "null"],
+            "enum": ["definition", "thesis", "empirical", "normative", "methodological", "objection", "reply", null]
+          },
+          "polarity": { "type": ["string", "null"], "enum": ["assert", "deny", "conditional", null] },
+          "modality": {
+            "type": ["string", "null"],
+            "enum": ["is", "will", "would", "can", "could", "cannot", "must", "should", "ought", "may", "appears_as", "becomes", "in_essence_is", null]
+          },
+          "dialectical_status": {
+            "type": ["string", "null"],
+            "enum": ["none", "tension_pair", "appearance_essence", "developmental", null]
+          },
+          "scope": {
+            "type": ["object", "null"],
+            "properties": {
+              "domain": { "type": ["string", "null"] },
+              "condition": { "type": ["string", "null"] }
+            },
+            "additionalProperties": true
+          },
+          "attribution": { "type": ["string", "null"], "enum": ["self", "citation", "interlocutor", null] },
+          "attributed_to": {
+            "type": ["object", "null"],
+            "properties": {
+              "author_name": { "type": ["string", "null"] },
+              "work_hint": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          },
+          "citation_marker": { "type": ["string", "null"] },
+          "evidence_sentence_indices": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 1
+          },
+          "about_terms": { "type": "array", "items": { "type": "string" } },
+          "confidence": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
+        },
+        "required": ["claim_text_canonical", "claim_type", "evidence_sentence_indices"]
+      }
+    }
+  },
+  "required": ["claims"]
+}

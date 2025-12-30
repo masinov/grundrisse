@@ -1,0 +1,437 @@
+I sent your plan to review:
+
+
+
+
+This plan is exceptionally mature. It has moved beyond "architecture" into "engineering specification." You have successfully incorporated the feedback on granularity (`SentenceSpan`), dialectics, and provenance.
+
+However, looking at this with a "Day 1 Implementation" lens, there are **three specific operational gaps** and **one data modeling omission** regarding authorship scope.
+
+Here is the critique of what is missing, followed by the **JSON Schemas** and **Clustering Heuristics** you requested to start coding.
+
+### 1. What is Missing? (The Final 5%)
+
+**1.1 The "Preface Problem" (Granular Authorship)**
+
+* **Gap:** Your `TextBlock` links to `Edition`, which links to `Work`, which links to `Author`.
+* **The Issue:** Marxist texts are famous for Prefaces, Afterwords, and Footnotes written by others (e.g., Engels writing the Preface to Marx’s *Capital* 20 years later; editors adding footnotes).
+* **Risk:** If you extract a claim from Engels' Preface and attribute it to Marx via the `Work` ID, you corrupt the provenance.
+* **Fix:** Add `author_id_override` (nullable) to the `TextBlock` schema. If null, inherit from `Work`.
+
+**1.2 Explicit Citation vs. Semantic Link**
+
+* **Gap:** You handle semantic linking ("Concept A is like Concept B"), but not *explicit* citations ("Marx cites Ricardo here").
+* **The Issue:** High-value edges are lost if you treat a direct quote as just another claim.
+* **Fix:** In Stage A3 (Claim Extraction), add a `citation_target` field. If the text says *"As Hegel says in the Logic..."*, this is not a Claim *by* Marx, it is an **Attribution**.
+* **Action:** Add `attribution_type: "self" | "citation" | "interlocutor"` to the Claim model.
+
+**1.3 The "Anaphora" Window**
+
+* **Gap:** Paragraph-level extraction.
+* **The Issue:** A paragraph might start with *"It is therefore..."*. The "It" refers to the concept in the *previous* paragraph.
+* **Fix:** In Stage A, strictly implement a **Context Injection** strategy: Prepend the *previous sentence* to the prompt context but mask it out of the extraction range.
+
+---
+
+### 2. The JSON Schemas (Ready for `llm-contracts`)
+
+Here are the strict schemas for your primary LLM tasks. These are designed to be pasted into your prompt templates.
+
+#### Task A1: Concept Mention Extraction (Per Paragraph)
+
+*Use this for `extract_mentions(paragraph_text)*`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "surface_form": { "type": "string", "description": "The exact text substring." },
+          "normalized_form": { "type": "string", "description": "Lemmatized or lowercase form." },
+          "start_char_in_sentence": { "type": "integer" },
+          "end_char_in_sentence": { "type": "integer" },
+          "sentence_index": { "type": "integer", "description": "Index of the sentence within the provided block." },
+          "is_technical_term": { "type": "boolean", "description": "True if this is a defined philosophical/political term, not a common noun." },
+          "candidate_gloss": { "type": "string", "description": "A 5-10 word inference of what this term means in this specific context." }
+        },
+        "required": ["surface_form", "sentence_index", "is_technical_term"]
+      }
+    }
+  }
+}
+
+```
+
+#### Task A3: Claim Extraction (Per Paragraph/Section)
+
+*Use this for `extract_claims(paragraph_text)*`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "claim_text_canonical": { "type": "string", "description": "The proposition rewritten as a standalone statement." },
+          "claim_type": { "type": "string", "enum": ["definition", "thesis", "empirical", "normative", "methodological", "objection", "reply"] },
+          "polarity": { "type": "string", "enum": ["assert", "deny", "conditional"] },
+          "modality": { "type": "string", "enum": ["is", "must", "should", "may", "appears_as", "becomes", "in_essence_is"] },
+          "dialectical_status": { "type": "string", "enum": ["none", "tension_pair", "appearance_essence", "developmental"] },
+          "scope": {
+            "type": "object",
+            "properties": {
+              "domain": { "type": "string" },
+              "condition": { "type": "string", "description": "e.g., 'under capitalism', 'in the abstract'" }
+            }
+          },
+          "attribution": { "type": "string", "enum": ["self", "citation", "interlocutor"], "description": "Is the author asserting this, or citing someone else?" },
+          "evidence_sentence_indices": { "type": "array", "items": { "type": "integer" } },
+          "about_terms": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["claim_text_canonical", "claim_type", "evidence_sentence_indices"]
+      }
+    }
+  }
+}
+
+```
+
+#### Task B: Concept Canonicalization (The "Ontologist")
+
+*Use this for `canonicalize_cluster(mention_cluster)*`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label_canonical": { "type": "string", "description": "Title Case label (e.g., 'Surplus Value')." },
+          "original_term_vernacular": { "type": ["string", "null"], "description": "e.g., 'Mehrwert' if detectable." },
+          "gloss": { "type": "string", "description": "Precise 1-2 sentence definition for this specific sense." },
+          "assigned_mention_ids": { "type": "array", "items": { "type": "string" } },
+          "temporal_scope": {
+            "type": "object",
+            "properties": {
+              "start_year": { "type": ["integer", "null"] },
+              "end_year": { "type": ["integer", "null"] },
+              "note": { "type": "string" }
+            }
+          },
+          "is_distinct_sense": { "type": "boolean", "description": "True if this splits from the main cluster." }
+        },
+        "required": ["label_canonical", "gloss", "assigned_mention_ids"]
+      }
+    },
+    "rejected_mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mention_id": { "type": "string" },
+          "reason": { "type": "string", "enum": ["not_a_concept", "too_generic", "parsing_error"] }
+        }
+      }
+    }
+  }
+}
+
+```
+
+---
+
+### 3. Clustering Heuristics (Python Logic)
+
+These heuristics determine how you group inputs *before* spending money on the LLM.
+
+#### 3.1 Concept Mention Clustering (Stage B Pre-processing)
+
+**Goal:** Group "value", "Value", "exchange-value" into candidate buckets.
+
+1. **Hard Filter (Scope):** `work_id` must match (Cluster within Work first).
+2. **Lexical Normalization:**
+* `normalized = text.lower().lemma()`
+* Stopword removal (keep "The State", drop "The").
+
+
+3. **Grouping Logic:**
+* **Tier 1 (Exact Match):** Group all identical `normalized` forms.
+* **Tier 2 (Sub-string):** If "Value" is a Concept, "Theory of Value" is a candidate for the same cluster *unless* "Theory of Value" appears frequently enough to be distinct.
+* **Tier 3 (Vector Closeness - Optional Early):**
+* Compute `cosine(embedding(mention_sentence_context))`.
+* Threshold: `> 0.85`.
+* *Warning:* Do not merge distinct terms like "Labor" and "Labor Power" just because they have high vector similarity. Rely on string overlap first.
+
+
+
+
+
+#### 3.2 Claim Deduplication Clustering (Stage 8.1)
+
+**Goal:** Identify that "The worker becomes poorer the more wealth he produces" is the same claim as "The accumulation of wealth is the accumulation of misery."
+
+1. **Feature Vector construction:**
+* `V_claim` = Embedding of `claim_text_canonical`.
+* `Set_concepts` = Set of `about_concept_ids`.
+
+
+2. **Heuristic Score (0.0 - 1.0):**
+* `sim_semantic` = `cosine(V_claim_A, V_claim_B)`
+* `sim_concepts` = Jaccard Index of `Set_concepts`.
+* `Weighted Score` = `0.7 * sim_semantic + 0.3 * sim_concepts`.
+
+
+3. **Thresholds:**
+* `> 0.92`: Auto-merge (High confidence duplicate).
+* `0.85 - 0.92`: Send to LLM for "Merge/Split/Refine" decision.
+* `< 0.85`: Treat as distinct claims.
+
+
+
+---
+
+### 4. Immediate Next Step
+
+You are ready to code.
+
+1. **Initialize the Repository:** Set up `ingest-service` and `nlp-pipeline`.
+2. **Schema Migration:** Apply the `SentenceSpan` and `author_override` changes to Postgres.
+3. **The "Vertical Slice":** Ingest *only* the **1844 Manuscripts**. It is short, dense, and rich in concept evolution. It will fail-fast your segmentation and mention extraction logic immediately.
+
+### Verdict on the reviewer’s latest revision
+
+Adopt it. The four items are correct and materially improve Day-1 correctness. None conflicts with the current plan; they close operational gaps.
+
+Below are the precise confirmations, plus the exact schema/pipeline changes you should make so the reviewer’s additions become first-class rather than bolted-on.
+
+---
+
+## 1) “Preface problem” (granular authorship)
+
+**Reviewer fix:** `author_id_override` on `TextBlock`.
+
+**Correct.** Work-level authorship is not sufficient for:
+
+* prefaces/afterwords by different authors (Engels, editors)
+* editorial footnotes
+* appended letters/documents inside a single “work page”
+
+### What to implement
+
+Add authorship at the block level and optionally at paragraph level (later). Minimal Day-1:
+
+**TextBlock (add)**
+
+* `author_id_override` (nullable)
+* `author_role` (nullable enum: author/editor/translator/prefacer/commentator)
+
+**Authorship resolution rule**
+
+* effective_author(block) = `author_id_override` if set else `Work.author_id`.
+
+**Why block-level is enough initially**
+Prefaces/afterwords/footnotes are usually contiguous blocks. Sentence-level override is only needed for interleaved annotations; defer that.
+
+---
+
+## 2) Explicit citations vs semantic links
+
+**Reviewer fix:** add `attribution` / `citation_target` to Claim extraction.
+
+**Correct.** This prevents misattributing quoted positions to the current author and enables a high-value edge type: explicit citation.
+
+### What to implement (minimal but solid)
+
+#### 2.1 Extend Claim model
+
+Add:
+
+* `attribution` (enum): `self | citation | interlocutor`
+* `attributed_author_id` (nullable FK to Author; if known)
+* `citation_work_id` (nullable; if detected)
+* `citation_locator` (nullable; free text like “Logic”, “Capital vol 1 ch 1”, page refs)
+* `citation_quote_span_group_id` (nullable; if the paragraph contains an explicit quote)
+
+Do not overfit to perfect bibliographic resolution on day one.
+
+#### 2.2 Add a separate CitationEdge table (recommended)
+
+Don’t overload ClaimLink for explicit citations.
+
+**CitationEdge**
+
+* `citation_id`
+* `source_claim_id` (the author’s claim that cites)
+* `target_author_id` (nullable)
+* `target_work_id` (nullable)
+* `target_span_group_id` (nullable; when you can align)
+* `citation_text` (short extracted string)
+* `confidence`
+* `extraction_run_id`
+
+This preserves the distinction:
+
+* *semantic link* (ClaimLink) vs *explicit citation* (CitationEdge).
+
+---
+
+## 3) The “Anaphora window” / context injection
+
+**Reviewer fix:** prepend previous sentence/paragraph for context, but exclude it from extraction.
+
+**Correct.** Without this, you will systematically fail on “it/this/therefore/above” transitions.
+
+### Implementation pattern (safe and simple)
+
+For each paragraph `P_k` you pass to Task A1/A3, build prompt context:
+
+* **Context prefix (read-only)**: last 1–2 sentences of `P_{k-1}` (or last sentence of previous paragraph) labeled `CONTEXT_ONLY`.
+* **Target paragraph**: the full paragraph `P_k` labeled `TARGET`.
+
+**Output restriction**
+The JSON schema requires `sentence_index` referencing only the TARGET sentence list. Enforce validation:
+
+* reject any output referencing context indices
+* if model tries anyway: rerun with stronger instruction.
+
+This achieves coreference resolution without polluting evidence.
+
+---
+
+## 4) JSON Schemas supplied by reviewer
+
+These are good and “code-ready,” with a few necessary refinements for your architecture.
+
+### 4.1 Task A1 schema tweaks
+
+Current reviewer schema is acceptable. Add:
+
+* `confidence` (number 0–1) per mention (you already track it)
+* require `start_char_in_sentence` and `end_char_in_sentence` when `is_technical_term=true` (otherwise you can’t highlight)
+
+### 4.2 Task A3 schema tweaks
+
+Good. Add two fields now to support new requirements:
+
+* `attribution` is included (good).
+* Add optional:
+
+  * `attributed_to`: `{ "author_name": string|null, "work_hint": string|null }`
+  * `citation_marker`: string|null (the exact “As X says…” substring)
+
+Also make `evidence_sentence_indices` required and non-empty.
+
+### 4.3 Task B schema tweaks
+
+Good. Add:
+
+* `label_short` (you use it)
+* `root_concept_hint` (string|null) to help root grouping later
+  Not required, but useful.
+
+---
+
+## 5) Clustering heuristics (reviewer)
+
+These are correct for a Day-1 implementation. Two additions improve robustness:
+
+### 5.1 Concept mention clustering
+
+Add a **do-not-merge guardrail list**:
+
+* if normalized forms differ by a critical token (e.g., “labor” vs “labor power”, “value” vs “exchange-value”), keep separate at Tier 1 and only allow LLM to merge if it explicitly decides so.
+
+Also use a **work-local first** policy exactly as described.
+
+### 5.2 Claim dedup clustering
+
+Weighted similarity is correct. Add:
+
+* **scope/modality mismatch penalty**:
+
+  * if modality differs (is vs appears_as vs in_essence_is), cap score (e.g., min(score, 0.85)) to avoid merging appearance/essence claims.
+* **dialectical_status mismatch penalty** similarly.
+
+This is crucial for Marxist texts where these distinctions are semantically load-bearing.
+
+---
+
+## 6) Additional concrete schema changes implied by the review
+
+### 6.1 TextBlock authorship override (as above)
+
+Add `author_id_override`, optionally `author_role`.
+
+### 6.2 Claims need “effective author” recorded
+
+To keep downstream queries simple, persist:
+
+* `effective_author_id` on Claim (computed at extraction time from TextBlock override).
+  This avoids repeated joins and mistakes.
+
+### 6.3 Add a WorkPart / Apparatus type (optional but useful)
+
+Instead of encoding “Preface” only as a TextBlock title, add:
+
+* `block_subtype` (preface/afterword/footnote/editor_note/letter/etc.)
+
+This helps evaluation and reduces misclassification.
+
+---
+
+## 7) Revised “Day 1” implementation sequence (with reviewer fixes integrated)
+
+1. **DB migrations**
+
+   * SentenceSpan + Paragraph + SpanGroup
+   * TextBlock.author_id_override (+ role/subtype)
+   * Claim.attribution (+ citation fields) and/or CitationEdge
+
+2. **Ingest 1844 Manuscripts only**
+
+   * segment blocks (preface etc.)
+   * sentence split
+   * paragraph container creation
+
+3. **Stage A extraction**
+
+   * A1 mentions with context injection (prev paragraph tail)
+   * A3 claims with context injection and attribution detection
+   * strict schema validation + reject/retry
+
+4. **Stage B concept canonicalization**
+
+   * work-local mention clustering
+   * run Ontologist prompt
+   * create Concepts + map mentions
+
+5. **Initial evaluation**
+
+   * check authorship correctness on blocks
+   * check claim evidence sentence precision
+   * spot-check that citations are not misattributed
+
+---
+
+## Bottom line
+
+Yes: the reviewer’s last revision is correct. Implement:
+
+* `author_id_override` on TextBlock (and compute effective author for claims),
+* `attribution` (+ minimal citation metadata) for claims and ideally a separate `CitationEdge`,
+* context injection with extraction masking,
+* the provided schemas with small additions for offsets/confidence,
+* clustering heuristics with modality/dialectic penalties and “do-not-merge” guards.

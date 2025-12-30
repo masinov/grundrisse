@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grundrisse-ingest-service"
+version = "0.1.0"
+description = "Fetch, normalize, segment, and store marxists.org editions."
+requires-python = ">=3.11"
+dependencies = [
+  "typer>=0.12",
+  "beautifulsoup4>=4.12",
+  "httpx>=0.27",
+  "lxml>=5.2",
+  "grundrisse-core",
+  "pydantic-settings>=2.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[project.scripts]
+grundrisse-ingest = "ingest_service.cli:app"

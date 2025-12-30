@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label_canonical": { "type": "string" },
+          "label_short": { "type": ["string", "null"] },
+          "original_term_vernacular": { "type": ["string", "null"] },
+          "gloss": { "type": "string" },
+          "assigned_mention_ids": { "type": "array", "items": { "type": "string" } },
+          "temporal_scope": {
+            "type": ["object", "null"],
+            "properties": {
+              "start_year": { "type": ["integer", "null"] },
+              "end_year": { "type": ["integer", "null"] },
+              "note": { "type": ["string", "null"] }
+            },
+            "additionalProperties": true
+          },
+          "is_distinct_sense": { "type": "boolean" },
+          "root_concept_hint": { "type": ["string", "null"] }
+        },
+        "required": ["label_canonical", "gloss", "assigned_mention_ids"]
+      }
+    },
+    "rejected_mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "mention_id": { "type": "string" },
+          "reason": { "type": "string", "enum": ["not_a_concept", "too_generic", "parsing_error"] }
+        },
+        "required": ["mention_id", "reason"]
+      }
+    }
+  },
+  "required": ["concepts", "rejected_mentions"]
+}
+
