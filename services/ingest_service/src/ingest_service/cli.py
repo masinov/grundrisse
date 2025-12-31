@@ -787,3 +787,291 @@ def crawl_ingest(
                 typer.echo(f"  ✗ Failed: {e}", err=True)
                 work_catalog.mark_work_failed(work.discovery_id, str(e))
                 session.commit()
+
+
+@app.command("crawl-build-graph")
+def crawl_build_graph(
+    seed_url: str = typer.Argument("https://www.marxists.org/", help="Seed URL to start crawling from"),
+    *,
+    max_depth: int = typer.Option(8, help="Maximum depth to crawl"),
+    max_urls: int = typer.Option(10000, help="Maximum URLs to discover"),
+    crawl_delay: float = typer.Option(0.5, help="Delay between requests (seconds)"),
+) -> None:
+    """
+    Phase 1: Build complete hyperlink graph without classification.
+
+    This is the CHEAP phase - just HTTP requests to discover structure.
+    No LLM calls yet. Output is a complete link graph in the database.
+    
+    Example:
+        grundrisse-ingest crawl-build-graph https://www.marxists.org/ --max-depth 6
+    """
+    from grundrisse_core.db.models import CrawlRun
+    from ingest_service.crawl.http_client import RateLimitedHttpClient
+    from ingest_service.crawl.link_graph import LinkGraphBuilder
+
+    data_dir = Path("data/raw")
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    with SessionLocal() as session:
+        # Create crawl run
+        crawl_run = CrawlRun(
+            pipeline_version="v0.2-progressive",
+            crawl_scope={
+                "seed_url": seed_url,
+                "max_depth": max_depth,
+                "max_urls": max_urls,
+                "phase": "link_graph",
+            },
+            started_at=datetime.utcnow(),
+            status="started",
+        )
+        session.add(crawl_run)
+        session.flush()
+
+        typer.echo(f"Starting crawl run: {crawl_run.crawl_run_id}")
+        typer.echo(f"Building link graph from {seed_url}...")
+
+        # Create HTTP client and graph builder
+        with RateLimitedHttpClient(crawl_delay=crawl_delay) as http_client:
+            builder = LinkGraphBuilder(
+                session=session,
+                crawl_run_id=crawl_run.crawl_run_id,
+                http_client=http_client,
+                data_dir=data_dir,
+            )
+
+            try:
+                stats = builder.build_graph(
+                    seed_url=seed_url,
+                    max_depth=max_depth,
+                    max_urls=max_urls,
+                )
+
+                # Update crawl run
+                crawl_run.urls_discovered = stats["urls_discovered"]
+                crawl_run.urls_fetched = stats["urls_fetched"]
+                crawl_run.urls_failed = stats["urls_failed"]
+                crawl_run.status = "completed"
+                crawl_run.finished_at = datetime.utcnow()
+                session.commit()
+
+                typer.echo(f"\n✓ Link graph built successfully!")
+                typer.echo(f"  URLs discovered: {stats['urls_discovered']}")
+                typer.echo(f"  URLs fetched: {stats['urls_fetched']}")
+                typer.echo(f"  URLs failed: {stats['urls_failed']}")
+                typer.echo(f"  Max depth reached: {stats['max_depth_reached']}")
+                typer.echo(f"\nCrawl run ID: {crawl_run.crawl_run_id}")
+                typer.echo(f"\nNext step: Run classification with:")
+                typer.echo(f"  grundrisse-ingest crawl-classify {crawl_run.crawl_run_id}")
+
+            except Exception as e:
+                crawl_run.status = "failed"
+                crawl_run.error_log = str(e)
+                crawl_run.finished_at = datetime.utcnow()
+                session.commit()
+                typer.echo(f"✗ Crawl failed: {e}", err=True)
+                raise
+
+
+@app.command("crawl-classify")
+def crawl_classify(
+    crawl_run_id: str = typer.Argument(..., help="Crawl run ID from build-graph"),
+    *,
+    budget_tokens: int = typer.Option(50000, help="Token budget for classification"),
+    strategy: str = typer.Option("leaf_to_root", help="Classification strategy"),
+    max_nodes_per_call: int = typer.Option(15, help="Max nodes to classify per LLM call"),
+    no_content_samples: bool = typer.Option(False, help="Don't include page content in prompts"),
+) -> None:
+    """
+    Phase 2: Progressive LLM-powered classification with budget control.
+
+    Strategies:
+      - leaf_to_root: Start at deepest pages, classify upward (RECOMMENDED)
+      - root_to_leaf: Start at root, classify downward (not yet implemented)
+
+    Can be run multiple times with different budgets to continue classification.
+
+    Example:
+        grundrisse-ingest crawl-classify abc-123-def --budget-tokens 100000
+    """
+    from grundrisse_core.db.models import ClassificationRun, CrawlRun
+    from ingest_service.crawl.progressive_classifier import ProgressiveClassifier
+
+    crawl_run_uuid = uuid.UUID(crawl_run_id)
+
+    # Import LLM client (adjust this based on your setup)
+    try:
+        from nlp_pipeline.llm.zai_glm import ZaiGlmClient
+        from nlp_pipeline.settings import settings as nlp_settings
+
+        if not nlp_settings.zai_api_key:
+            typer.echo("Error: GRUNDRISSE_ZAI_API_KEY not set", err=True)
+            raise typer.Exit(1)
+
+        llm_client = ZaiGlmClient(
+            api_key=nlp_settings.zai_api_key,
+            base_url=nlp_settings.zai_base_url,
+            model=nlp_settings.zai_model,
+        )
+    except ImportError:
+        typer.echo("Error: Could not import LLM client. Is nlp_pipeline installed?", err=True)
+        raise typer.Exit(1)
+
+    with SessionLocal() as session:
+        # Get crawl run
+        crawl_run = session.get(CrawlRun, crawl_run_uuid)
+        if not crawl_run:
+            typer.echo(f"Crawl run not found: {crawl_run_id}", err=True)
+            raise typer.Exit(1)
+
+        # Create classification run
+        class_run = ClassificationRun(
+            crawl_run_id=crawl_run_uuid,
+            strategy=strategy,
+            budget_tokens=budget_tokens,
+            tokens_used=0,
+            model_name=nlp_settings.zai_model,
+            prompt_version=ProgressiveClassifier.PROMPT_VERSION,
+            started_at=datetime.utcnow(),
+            status="running",
+        )
+        session.add(class_run)
+        session.flush()
+
+        typer.echo(f"Starting classification run: {class_run.run_id}")
+        typer.echo(f"Strategy: {strategy}")
+        typer.echo(f"Token budget: {budget_tokens:,}")
+
+        # Create classifier
+        classifier = ProgressiveClassifier(
+            session=session,
+            crawl_run_id=crawl_run_uuid,
+            classification_run_id=class_run.run_id,
+            llm_client=llm_client,
+            budget_tokens=budget_tokens,
+            model_name=nlp_settings.zai_model,
+        )
+
+        try:
+            if strategy == "leaf_to_root":
+                stats = classifier.classify_leaf_to_root(
+                    max_nodes_per_call=max_nodes_per_call,
+                    include_content_samples=not no_content_samples,
+                )
+            else:
+                typer.echo(f"Strategy '{strategy}' not yet implemented", err=True)
+                raise typer.Exit(1)
+
+            typer.echo(f"\n✓ Classification completed!")
+            typer.echo(f"  URLs classified: {stats['urls_classified']}")
+            typer.echo(f"  LLM calls: {stats['llm_calls']}")
+            typer.echo(f"  Errors: {stats['errors']}")
+            typer.echo(f"  Tokens used: {class_run.tokens_used:,} / {budget_tokens:,}")
+            typer.echo(f"  Status: {class_run.status}")
+
+            if class_run.status == "budget_exceeded":
+                typer.echo(f"\n⚠ Budget exceeded. Run again with more tokens to continue:")
+                typer.echo(f"  grundrisse-ingest crawl-classify {crawl_run_id} --budget-tokens 50000")
+
+            typer.echo(f"\nNext step: Review classifications with:")
+            typer.echo(f"  grundrisse-ingest crawl-review {crawl_run_id}")
+
+        except Exception as e:
+            class_run.status = "failed"
+            class_run.error_log = str(e)
+            class_run.finished_at = datetime.utcnow()
+            session.commit()
+            typer.echo(f"✗ Classification failed: {e}", err=True)
+            raise
+
+
+@app.command("crawl-review")
+def crawl_review(
+    crawl_run_id: str = typer.Argument(..., help="Crawl run ID to review"),
+    *,
+    show_limit: int = typer.Option(20, help="Number of classified URLs to show"),
+    group_by: str = typer.Option("work", help="Group by: work, author, page_type"),
+) -> None:
+    """
+    Review classified URLs and show summary statistics.
+
+    Example:
+        grundrisse-ingest crawl-review abc-123-def --show-limit 50
+    """
+    from grundrisse_core.db.models import CrawlRun, UrlCatalogEntry
+
+    crawl_run_uuid = uuid.UUID(crawl_run_id)
+
+    with SessionLocal() as session:
+        # Get crawl run
+        crawl_run = session.get(CrawlRun, crawl_run_uuid)
+        if not crawl_run:
+            typer.echo(f"Crawl run not found: {crawl_run_id}", err=True)
+            raise typer.Exit(1)
+
+        # Get classification stats
+        total_urls = session.execute(
+            select(func.count(UrlCatalogEntry.url_id)).where(UrlCatalogEntry.crawl_run_id == crawl_run_uuid)
+        ).scalar()
+
+        classified = session.execute(
+            select(func.count(UrlCatalogEntry.url_id))
+            .where(UrlCatalogEntry.crawl_run_id == crawl_run_uuid)
+            .where(UrlCatalogEntry.classification_status == "classified")
+        ).scalar()
+
+        typer.echo(f"Crawl Run: {crawl_run_id}")
+        typer.echo(f"Total URLs: {total_urls}")
+        typer.echo(f"Classified: {classified} ({classified / total_urls * 100:.1f}%)")
+        typer.echo(f"Unclassified: {total_urls - classified}")
+
+        # Get sample of classified URLs
+        typer.echo(f"\nSample classifications (limit {show_limit}):")
+
+        classified_urls = session.execute(
+            select(UrlCatalogEntry)
+            .where(UrlCatalogEntry.crawl_run_id == crawl_run_uuid)
+            .where(UrlCatalogEntry.classification_status == "classified")
+            .limit(show_limit)
+        ).scalars().all()
+
+        # Group by specified field
+        from collections import defaultdict
+
+        if group_by == "work":
+            groups = defaultdict(list)
+            for url in classified_urls:
+                work_title = url.classification_result.get("work_title") if url.classification_result else None
+                groups[work_title or "Unknown"].append(url)
+
+            for work_title, urls in groups.items():
+                typer.echo(f"\n  Work: {work_title}")
+                for url in urls[:5]:  # Show max 5 per group
+                    cls = url.classification_result or {}
+                    typer.echo(f"    - {url.url_canonical}")
+                    typer.echo(f"      Type: {cls.get('page_type')}, Author: {cls.get('author')}")
+
+        elif group_by == "author":
+            groups = defaultdict(list)
+            for url in classified_urls:
+                author = url.classification_result.get("author") if url.classification_result else None
+                groups[author or "Unknown"].append(url)
+
+            for author, urls in groups.items():
+                typer.echo(f"\n  Author: {author}")
+                for url in urls[:5]:
+                    cls = url.classification_result or {}
+                    typer.echo(f"    - {url.url_canonical}")
+                    typer.echo(f"      Type: {cls.get('page_type')}, Work: {cls.get('work_title')}")
+
+        else:  # page_type
+            groups = defaultdict(list)
+            for url in classified_urls:
+                page_type = url.classification_result.get("page_type") if url.classification_result else None
+                groups[page_type or "unknown"].append(url)
+
+            for page_type, urls in groups.items():
+                typer.echo(f"\n  Page Type: {page_type} ({len(urls)})")
+                for url in urls[:3]:
+                    typer.echo(f"    - {url.url_canonical}")

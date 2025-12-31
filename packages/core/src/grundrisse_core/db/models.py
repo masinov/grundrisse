@@ -430,7 +430,47 @@ class UrlCatalogEntry(Base):
     fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    __table_args__ = (Index("ix_url_catalog_status", "status"), Index("ix_url_catalog_sha256", "content_sha256"))
+    # Link graph fields
+    parent_url_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("url_catalog_entry.url_id"), nullable=True
+    )
+    depth: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    child_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Classification fields
+    classification_status: Mapped[str] = mapped_column(String(32), nullable=False, default="unclassified")
+    classification_result: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    classification_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("classification_run.run_id"), nullable=True
+    )
+
+    __table_args__ = (
+        Index("ix_url_catalog_status", "status"),
+        Index("ix_url_catalog_sha256", "content_sha256"),
+        Index("ix_url_catalog_depth", "depth"),
+        Index("ix_url_catalog_classification_status", "classification_status"),
+        Index("ix_url_catalog_parent", "parent_url_id"),
+    )
+
+
+class ClassificationRun(Base):
+    __tablename__ = "classification_run"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    crawl_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("crawl_run.crawl_run_id"))
+    strategy: Mapped[str] = mapped_column(String(64), nullable=False)
+    budget_tokens: Mapped[int] = mapped_column(Integer, nullable=False)
+    tokens_used: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    start_depth: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_depth: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    urls_classified: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    urls_pending: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="running")
+    error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+    model_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
 
 
 class WorkDiscovery(Base):
@@ -476,5 +516,6 @@ def import_models() -> None:
         SpanAlignment,
         CrawlRun,
         UrlCatalogEntry,
+        ClassificationRun,
         WorkDiscovery,
     )
