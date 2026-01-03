@@ -4,7 +4,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="GRUNDRISSE_", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="GRUNDRISSE_",
+        extra="ignore",
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
     database_url: str = "postgresql+psycopg://grundrisse:grundrisse@localhost:5432/grundrisse"
 

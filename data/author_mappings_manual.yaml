@@ -1,0 +1,27 @@
+# Manual author name mappings for top authors
+# Format: canonical_name: [variant1, variant2, ...]
+
+Vladimir Lenin:
+  - V. I. Lenin
+  - V.I. Lenin
+  - Lenin
+
+Joseph Stalin:
+  - J. V. Stalin
+
+Friedrich Engels:
+  - Frederick Engels
+
+C.L.R. James:
+  - C. L. R. James
+
+Dora B. Montefiore:
+  - Dora Montefiore
+
+Mao Zedong:
+  - Mao Tse-tung
+
+Anton Pannekoek:
+  - Antonie Pannekoek
+
+# Add more as identified

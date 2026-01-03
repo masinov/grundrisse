@@ -25,7 +25,7 @@ from grundrisse_core.db.models import (
     TextBlock,
     Work,
 )
-from grundrisse_core.db.enums import ClaimAttribution, ClaimType, DialecticalStatus, Modality, Polarity
+from grundrisse_core.db.enums import BlockSubtype, ClaimAttribution, ClaimType, DialecticalStatus, Modality, Polarity
 from nlp_pipeline.llm.client import LLMClient
 from nlp_pipeline.stage_a.context import build_context_window
 from nlp_pipeline.stage_a.prompts import render_a1_prompt, render_a3_prompt
@@ -50,6 +50,7 @@ def run_stage_a_for_edition(
     schemas: Schemas,
     progress_every: int = 10,
     commit_every: int = 5,
+    include_apparatus: bool = False,
 ) -> None:
     """
     Minimal Day-1 implementation:
@@ -97,6 +98,7 @@ def run_stage_a_for_edition(
 
         pending_commits = 0
         skipped = 0
+        skip_subtypes = {BlockSubtype.toc, BlockSubtype.navigation, BlockSubtype.license, BlockSubtype.metadata, BlockSubtype.study_guide}
         for idx, paragraph in enumerate(paragraphs, start=1):
             if progress_every > 0 and (idx == 1 or idx % progress_every == 0):
                 print(f"[stage-a] paragraph {idx}/{total} para_id={paragraph.para_id} skipped={skipped}")
@@ -115,6 +117,11 @@ def run_stage_a_for_edition(
             ctx = build_context_window(prev_sent_texts, target_sentences, max_context_sentences=2)
 
             block = blocks.get(paragraph.block_id)
+            if not include_apparatus and block and block.block_subtype in skip_subtypes:
+                skipped += 1
+                prev_para_id = paragraph.para_id
+                prev_sent_texts = target_sentences
+                continue
             effective_author_id = block.author_id_override if block and block.author_id_override else work.author_id
 
             try:
@@ -166,7 +173,7 @@ def _prefetch_stage_a_processed_para_ids(session, paragraphs: list[Paragraph]) -
     runs = session.scalars(
         select(ExtractionRun).where(
             ExtractionRun.status == "succeeded",
-            ExtractionRun.prompt_version.in_([STAGE_A13_PROMPT_VERSION, STAGE_A1_PROMPT_VERSION, STAGE_A3_PROMPT_VERSION]),
+            ExtractionRun.prompt_version.in_([STAGE_A1_PROMPT_VERSION, STAGE_A3_PROMPT_VERSION]),
             ExtractionRun.prompt_name.in_([STAGE_A1_PROMPT_NAME, STAGE_A3_PROMPT_NAME]),
         )
     ).all()

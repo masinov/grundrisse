@@ -79,6 +79,21 @@ After running Stage A, inspect drift:
 - `grundrisse-nlp attribution-stats <edition_uuid>`
 - `grundrisse-nlp technicality-stats <edition_uuid>`
 
+## Validation (spot checks)
+
+See `docs/VALIDATION.md`. For quick human spot checks:
+
+- `grundrisse-nlp sample-edition <edition_uuid> --n 5 --include-no-mentions 2 --include-no-claims 2`
+
+## Running Stage B (concept canonicalization)
+
+Stage B clusters unassigned `ConceptMention`s within a `work_id` and canonicalizes them into `Concept`
+nodes (conservative sense splitting).
+
+```bash
+grundrisse-nlp stage-b <work_uuid>
+```
+
 ## Performance notes
 
 Stage A performs two LLM calls per paragraph (A1 mentions + A3 claims) and reuses an HTTP client
@@ -97,6 +112,15 @@ Example (override author/title for now; we’ll improve inference/crawling next)
 - `grundrisse-ingest ingest --language en --author "Karl Marx" --title "Economic and Philosophic Manuscripts of 1844" <work_url>`
 
 This writes raw HTML snapshots to `data/raw/` and persists `Edition/TextBlock/Paragraph/SentenceSpan` to Postgres.
+
+### Idempotency
+
+Re-running `grundrisse-ingest ingest` or `grundrisse-ingest ingest-work` with the same inputs reuses the
+same deterministic `edition_id` and will **not** duplicate `TextBlock/Paragraph/SentenceSpan`.
+
+If the parser output changes (block paths, paragraph hashes, or ordering), ingestion will raise an error
+to avoid mutating an existing Edition. In that case, ingest into a new Edition by using a different
+`source_url` (e.g., add a query param like `?run=4`) so the substrate remains immutable.
 
 ## Running ingest (multi-page work)
 

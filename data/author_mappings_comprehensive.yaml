@@ -1,0 +1,530 @@
+# Comprehensive author name mappings
+# Format:
+#   canonical_name: Full legal/expanded name
+#   display_name: Most commonly known as
+#   aliases: [list of all variants found in database]
+
+Vladimir Ilyich Lenin:
+  display: Vladimir Lenin
+  aliases:
+    - V. I. Lenin
+    - V.I. Lenin
+    - V. I. Lenin
+    - Lenin
+
+Joseph Stalin:
+  display: Joseph Stalin
+  aliases:
+    - J. V. Stalin
+    - J.V. Stalin
+    - J. Stalin
+    - Stalin
+
+Friedrich Engels:
+  display: Friedrich Engels
+  aliases:
+    - Frederick Engels
+
+Leon Trotsky:
+  display: Leon Trotsky
+  aliases:
+    - L. Trotsky
+    - L.D. Trotsky
+    - L. Trotzky
+
+Cyril Lionel Robert James:
+  display: C.L.R. James
+  aliases:
+    - C. L. R. James
+    - CLR James
+    - C L R James
+
+Dorothy Frances Montefiore:
+  display: Dora B. Montefiore
+  aliases:
+    - Dora Montefiore
+    - Dora B Montefiore
+    - Dora B. Montifiore
+    - D. Montefiore
+    - Lady Montefiore
+    - Montefiore
+    - Theresa Montefiore
+    - Sebag Montefiore
+    - Montefiore, Seeh
+
+Mao Zedong:
+  display: Mao Zedong
+  aliases:
+    - Mao Tse-tung
+    - Mao Tse Tung
+
+Anton Pannekoek:
+  display: Anton Pannekoek
+  aliases:
+    - Antonie Pannekoek
+
+Georgi Valentinovich Plekhanov:
+  display: Georgi Plekhanov
+  aliases:
+    - George Plekhanov
+    - G. Plekhanov
+    - G.V. Plekhanov
+    - G. V. Plekhanov
+    - George V. Plekhanov
+    - Georgy Plekhanov
+
+Georg Wilhelm Friedrich Hegel:
+  display: G.W.F. Hegel
+  aliases:
+    - G. W. F. Hegel
+    - Georg W. F. Hegel
+
+Nikolai Ivanovich Bukharin:
+  display: Nikolai Bukharin
+  aliases:
+    - N. Bukharin
+    - Nicolai Bukharin
+    - Nikolai Bukharin and Evgenii Preobrazhensky
+    - Nikolai Bukharin, Evgenii Preobrazhensky
+
+Evgeny Alexeyevich Preobrazhensky:
+  display: Evgeny Preobrazhensky
+  aliases:
+    - E. Preobrazhensky
+    - E. Preobrashenski
+    - E. A. Preobrazhensky
+    - E.A. Preobrazhensky
+
+Grigory Yevseyevich Zinoviev:
+  display: Grigory Zinoviev
+  aliases:
+    - Gregory Zinoviev
+    - Grigorii Zinoviev
+    - G. Zinoviev
+    - Comrade Zinoviev
+    - Zinoviev
+
+Lev Semyonovich Vygotsky:
+  display: Lev Vygotsky
+  aliases:
+    - L. S. Vygotsky
+    - L.S. Vygotsky
+    - L. Vygotsky
+    - Vygotsky
+
+Evald Vasilyevich Ilyenkov:
+  display: Evald Ilyenkov
+  aliases:
+    - E. V. Ilyenkov
+    - E.V. Ilyenkov
+    - Evald V Ilyenkov
+
+Anatoly Vasilyevich Lunacharsky:
+  display: Anatoly Lunacharsky
+  aliases:
+    - A. Lunacharski
+    - A. V. Lunacharsky
+    - Anatol Lunacharsky
+
+Alexander Romanovich Luria:
+  display: Alexander Luria
+  aliases:
+    - A. R. Luria
+
+Isaak Illich Rubin:
+  display: Isaak Rubin
+  aliases:
+    - I. I. Rubin
+    - I.I. Rubin
+    - Isaak Illich Rubin
+
+Alexander Solomonovich Lozovsky:
+  display: Alexander Lozovsky
+  aliases:
+    - A. Lozovsky
+    - A. Losovsky
+    - Solomon Lozovsky
+
+Béla Kun:
+  display: Béla Kun
+  aliases:
+    - Bela Kun
+
+Émile Armand:
+  display: Émile Armand
+  aliases:
+    - Emile Armand
+    - u00c9mile Armand
+
+Émile Pouget:
+  display: Émile Pouget
+  aliases:
+    - Emile Pouget
+
+Andreu Nin:
+  display: Andreu Nin
+  aliases:
+    - Andreas Nin
+    - Andres Nin
+    - Andrés Nin
+    - Andrs Nin
+    - Andru00e9s Nin
+
+Dolores Ibárruri:
+  display: Dolores Ibárruri
+  aliases:
+    - Dolores Ibarruri
+    - Dolores Ibu00e1rruri
+
+Jean Jaurès:
+  display: Jean Jaurès
+  aliases:
+    - Jean Jaures
+    - Jean Jaurs
+    - Léon Blum
+    - Lu00e9on Blum
+
+Manabendra Nath Roy:
+  display: M.N. Roy
+  aliases:
+    - M. N. Roy
+    - M.N. Roy
+    - MN Roy
+    - Evelyn Roy
+
+Aleksandr Alexandrovich Bogdanov:
+  display: Alexander Bogdanov
+  aliases:
+    - A. Bogdanov
+    - Aleksandr Bogdanov
+    - Alexander Bogdanov
+
+Eduard Bernstein:
+  display: Eduard Bernstein
+  aliases:
+    - E. Bernstein
+    - Edward Bernstein
+    - Edouard Bernstein
+
+Arthur Leslie Morton:
+  display: A.L. Morton
+  aliases:
+    - A L Morton
+    - A. L. Morton
+
+Henry Mayers Hyndman:
+  display: H.M. Hyndman
+  aliases:
+    - H. M. Hyndman
+    - H.M. Hyndman
+    - H. N. Hyndman
+    - Henry Hyndman
+    - Henry Mayer Hyndman
+    - H. M. Hyndman and E. Belfort Bax
+
+Edward Palmer Thompson:
+  display: E.P. Thompson
+  aliases:
+    - E. P. Thompson
+    - E.P. Thompson
+
+George Douglas Howard Cole:
+  display: G.D.H. Cole
+  aliases:
+    - G. D. H. Cole
+    - G.D.H. Cole
+
+John Burdon Sanderson Haldane:
+  display: J.B.S. Haldane
+  aliases:
+    - J. B. S. Haldane
+    - J.B.S. Haldane
+    - JBS Haldane
+
+John Desmond Bernal:
+  display: J.D. Bernal
+  aliases:
+    - J. D. Bernal
+    - J.D. Bernal
+    - John Bernal
+    - John Desmond Bernal
+
+John Atkinson Hobson:
+  display: J.A. Hobson
+  aliases:
+    - J. A. Hobson
+    - J.A. Hobson
+    - John A. Hobson
+
+Rajani Palme Dutt:
+  display: R. Palme Dutt
+  aliases:
+    - R. Palme Dutt
+    - Rajani Palme Dutt
+
+Robert Page Arnot:
+  display: R. Page Arnot
+  aliases:
+    - R. Page Arnot
+    - R Page Arnot
+    - Robin Page Arnot
+
+James Patrick Cannon:
+  display: James P. Cannon
+  aliases:
+    - J. P. Cannon
+    - J.P. Cannon
+
+John Ross Campbell:
+  display: J.R. Campbell
+  aliases:
+    - J. R. Campbell
+
+John Thomas Murphy:
+  display: J.T. Murphy
+  aliases:
+    - J. T. Murphy
+    - J.T. Murphy
+    - John Thomas Murphy
+
+Thomas Alfred Jackson:
+  display: T.A. Jackson
+  aliases:
+    - T. A. Jackson
+
+Otto Wille Kuusinen:
+  display: Otto Kuusinen
+  aliases:
+    - O. W. Kuusinen
+    - O.W. Kuusinen
+    - Otto Kuusinen
+    - Otto Wille Kuusinen
+
+Sebald Justinus Rutgers:
+  display: S.J. Rutgers
+  aliases:
+    - S. J. Rutgers
+    - Rutgers
+    - John R. Rutgers
+
+Moissaye Joseph Olgin:
+  display: M.J. Olgin
+  aliases:
+    - M. J. Olgin
+    - M. Olgin
+    - Moissaye J. Olgin
+
+William Zebulon Foster:
+  display: William Z. Foster
+  aliases:
+    - William Z. Foster
+    - Wm. Z. Foster
+
+Eugene Victor Debs:
+  display: Eugene V. Debs
+  aliases:
+    - Eugene V. Debs
+    - E. V. Debs
+    - Eugene Victor Debs
+
+Huey Percy Newton:
+  display: Huey P. Newton
+  aliases:
+    - Huey P. Newton
+
+Herbert George Wells:
+  display: H.G. Wells
+  aliases:
+    - H. G. Wells
+    - H.G. Wells
+
+Georg Lukács:
+  display: Georg Lukács
+  aliases:
+    - Georg Lukacs
+    - György Lukács
+
+Mikhail Sergeyevich Gorbachev:
+  display: Mikhail Gorbachev
+  aliases:
+    - M. S. Gorbachev
+    - M.S. Gorbachev
+
+Vyacheslav Mikhailovich Molotov:
+  display: Vyacheslav Molotov
+  aliases:
+    - V. M. Molotov
+
+Earl Russell Browder:
+  display: Earl Browder
+  aliases:
+    - Earl R. Browder
+
+Zbigniew Antoni Jordan:
+  display: Z.A. Jordan
+  aliases:
+    - Z. A. Jordan
+
+Vladislav Aleksandrovich Lektorsky:
+  display: V.A. Lektorsky
+  aliases:
+    - V. A. Lektorsky
+    - V.A. Lektorsky
+
+Sergey Ivanovich Vavilov:
+  display: S.I. Vavilov
+  aliases:
+    - S. I. Vavilov
+
+David Ivon Jones:
+  display: D. Ivon Jones
+  aliases:
+    - D. Ivon Jones
+
+Daniil Borisovich Elkonin:
+  display: D.B. Elkonin
+  aliases:
+    - D.B. El'konin
+
+Aleksei Nikolaevich Leontiev:
+  display: A.N. Leontiev
+  aliases:
+    - A. N. Leont'ev
+    - A. N. Leontiev
+    - A. N. Leontyev
+
+Anton Semyonovich Makarenko:
+  display: A.S. Makarenko
+  aliases:
+    - A. S. Makarenko
+    - A.S. Makarenko
+
+Alexander Georgievich Spirkin:
+  display: Alexander Spirkin
+  aliases:
+    - A. G. Spirkin
+    - A. Spirkin
+    - Alexander Spirkin
+
+Aleksandr Konstantinovich Voronsky:
+  display: A.K. Voronsky
+  aliases:
+    - A.K. Voronsky
+
+Aleksei Karpovich Dzhivelegov:
+  display: A.K. Dzhivelegov
+  aliases:
+    - A. K. Dzhivelegov
+
+Alexander Zavarykin Shlyapnikov:
+  display: Alexander Shlyapnikov
+  aliases:
+    - Alexander Shliapnikov
+    - Alexander Shlyapnikov
+
+Gustav Fabian Eckstein:
+  display: G.F. Eckstein
+  aliases:
+    - G.F. Eckstein
+
+Gustave Hervé:
+  display: Gustave Hervé
+  aliases:
+    - Gustave Herve
+    - Gustave Hervé
+
+Henk Canne Meijer:
+  display: H. Canne Meijer
+  aliases:
+    - H. Canne Meijer
+    - H. Canne-Meijer
+
+Vere Gordon Childe:
+  display: V. Gordon Childe
+  aliases:
+    - Vere Gordon Childe
+    - V. Gordon Childe
+
+Cecil Frank Glass:
+  display: C. Frank Glass
+  aliases:
+    - C. Frank Glass
+    - Frank Glass
+
+Isaac Nachman Steinberg:
+  display: I.N. Steinberg
+  aliases:
+    - I. N. Steinberg
+
+Benny Lévy:
+  display: Benny Lévy
+  aliases:
+    - Benny Levy
+    - Benny Lévy
+
+William Francis Warde:
+  display: George Novack
+  aliases:
+    - William F. Warde
+    - George Novack
+    - George E. Novack
+
+# Additional authors from database
+Tony Cliff:
+  display: Tony Cliff
+  aliases:
+    - T. Cliff
+    - Ygael Gluckstein
+
+Max Shachtman:
+  display: Max Shachtman
+  aliases:
+    - M. Shachtman
+    - M.S.
+    - M.S. (Max Shachtman)
+    - Shachtman
+
+Duncan Hallas:
+  display: Duncan Hallas
+  aliases:
+    - D. Hallas
+    - Don Hallas
+    - Fred Hallas
+
+Eleanor Marx:
+  display: Eleanor Marx
+  aliases:
+    - Eleanor Marx Aveling
+    - Eleanor Marx-Aveling
+    - Edward Aveling and Eleanor Marx Aveling
+    - Edward Aveling and Eleanor Marx-Aveling
+    - Edward Aveling; Eleanor Marx
+
+Theodore Rothstein:
+  display: Theodore Rothstein
+  aliases:
+    - Theodor Rothstein
+    - Andrew Rothstein
+    - Theo Rothstein
+    - Theo. Rothstein
+    - Th. Rothstein
+    - Thomas Rothstein
+
+Willi Münzenberg:
+  display: Willi Münzenberg
+  aliases:
+    - Willy Münzenberg
+    - Willy Mu00fcnzenberg
+    - Willi Mu00fcnzenberg
+    - W. Münzenberg
+
+Zo d'Axa:
+  display: Zo d'Axa
+  aliases:
+    - Zo d'Axa
+    - Zo du2019Axa
+
+# Keep Unknown as-is
+Unknown:
+  display: Unknown
+  aliases: []
