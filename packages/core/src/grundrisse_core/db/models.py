@@ -40,9 +40,24 @@ class Author(Base):
 
     author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     name_canonical: Mapped[str] = mapped_column(String(512), nullable=False)
+    name_display: Mapped[str] = mapped_column(String(512), nullable=False)
+    name_sort: Mapped[str] = mapped_column(String(512), nullable=False)
     name_variants: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
     birth_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     death_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class AuthorAlias(Base):
+    __tablename__ = "author_aliases"
+
+    alias_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("author.author_id", ondelete="CASCADE"))
+    name_variant: Mapped[str] = mapped_column(String(512), nullable=False)
+    variant_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default="now()")
+
+    author: Mapped[Author] = relationship()
 
 
 class Work(Base):

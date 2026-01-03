@@ -1,6 +1,6 @@
 """Add progressive classification support
 
-Revision ID: 0012_add_progressive_classification
+Revision ID: 0012_progressive_classify
 Revises: 0011_add_crawler_tables
 Create Date: 2025-12-31
 """
@@ -12,48 +12,14 @@ from alembic import op
 from sqlalchemy.dialects import postgresql
 
 
-revision = "0012_add_progressive_classification"
+revision = "0012_progressive_classify"
 down_revision = "0011_add_crawler_tables"
 branch_labels = None
 depends_on = None
 
 
 def upgrade() -> None:
-    # Add link graph fields to url_catalog_entry
-    op.add_column("url_catalog_entry", sa.Column("parent_url_id", postgresql.UUID(as_uuid=True), nullable=True))
-    op.add_column("url_catalog_entry", sa.Column("depth", sa.Integer(), nullable=False, server_default="0"))
-    op.add_column("url_catalog_entry", sa.Column("child_count", sa.Integer(), nullable=False, server_default="0"))
-
-    # Add classification fields to url_catalog_entry
-    op.add_column(
-        "url_catalog_entry",
-        sa.Column("classification_status", sa.String(length=32), nullable=False, server_default="unclassified"),
-    )
-    op.add_column("url_catalog_entry", sa.Column("classification_result", sa.JSON(), nullable=True))
-    op.add_column("url_catalog_entry", sa.Column("classification_run_id", postgresql.UUID(as_uuid=True), nullable=True))
-
-    # Add foreign keys
-    op.create_foreign_key(
-        "fk_url_catalog_entry_parent",
-        "url_catalog_entry",
-        "url_catalog_entry",
-        ["parent_url_id"],
-        ["url_id"],
-    )
-    op.create_foreign_key(
-        "fk_url_catalog_entry_classification_run",
-        "url_catalog_entry",
-        "classification_run",
-        ["classification_run_id"],
-        ["run_id"],
-    )
-
-    # Add indexes
-    op.create_index("ix_url_catalog_depth", "url_catalog_entry", ["depth"])
-    op.create_index("ix_url_catalog_classification_status", "url_catalog_entry", ["classification_status"])
-    op.create_index("ix_url_catalog_parent", "url_catalog_entry", ["parent_url_id"])
-
-    # Create classification_run table
+    # Create classification_run table FIRST (before adding FKs to it)
     op.create_table(
         "classification_run",
         sa.Column("run_id", postgresql.UUID(as_uuid=True), nullable=False),
@@ -74,6 +40,40 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["crawl_run_id"], ["crawl_run.crawl_run_id"]),
         sa.PrimaryKeyConstraint("run_id"),
     )
+
+    # Add link graph fields to url_catalog_entry
+    op.add_column("url_catalog_entry", sa.Column("parent_url_id", postgresql.UUID(as_uuid=True), nullable=True))
+    op.add_column("url_catalog_entry", sa.Column("depth", sa.Integer(), nullable=False, server_default="0"))
+    op.add_column("url_catalog_entry", sa.Column("child_count", sa.Integer(), nullable=False, server_default="0"))
+
+    # Add classification fields to url_catalog_entry
+    op.add_column(
+        "url_catalog_entry",
+        sa.Column("classification_status", sa.String(length=32), nullable=False, server_default="unclassified"),
+    )
+    op.add_column("url_catalog_entry", sa.Column("classification_result", sa.JSON(), nullable=True))
+    op.add_column("url_catalog_entry", sa.Column("classification_run_id", postgresql.UUID(as_uuid=True), nullable=True))
+
+    # Add foreign keys (now classification_run exists)
+    op.create_foreign_key(
+        "fk_url_catalog_entry_parent",
+        "url_catalog_entry",
+        "url_catalog_entry",
+        ["parent_url_id"],
+        ["url_id"],
+    )
+    op.create_foreign_key(
+        "fk_url_catalog_entry_classification_run",
+        "url_catalog_entry",
+        "classification_run",
+        ["classification_run_id"],
+        ["run_id"],
+    )
+
+    # Add indexes
+    op.create_index("ix_url_catalog_depth", "url_catalog_entry", ["depth"])
+    op.create_index("ix_url_catalog_classification_status", "url_catalog_entry", ["classification_status"])
+    op.create_index("ix_url_catalog_parent", "url_catalog_entry", ["parent_url_id"])
 
 
 def downgrade() -> None:

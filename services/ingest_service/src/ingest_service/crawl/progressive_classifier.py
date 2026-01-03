@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 import uuid
 from collections import defaultdict
 from datetime import datetime
@@ -90,27 +91,52 @@ class ProgressiveClassifier:
         # Start at deepest unclassified level
         current_depth = self._get_max_unclassified_depth()
 
+        print(f"🧠 Starting progressive classification (leaf-to-root)", file=sys.stderr)
+        print(f"   Strategy: {strategy if 'strategy' in locals() else 'leaf_to_root'}", file=sys.stderr)
+        print(f"   Token budget: {self.budget_tokens:,}", file=sys.stderr)
+        print(f"   Starting depth: {current_depth}", file=sys.stderr)
+        print("", file=sys.stderr)
+
         while self.tokens_used < self.budget_tokens and current_depth is not None:
+            # Adaptive batching strategy based on depth
+            # Deep depths (5-4): Use parent grouping (works well, good context)
+            # Shallow depths (3-0): Batch across parents (more efficient, less context needed)
+            use_parent_grouping = current_depth >= 4
+
+            # Increase batch size for shallow depths to improve efficiency
+            effective_batch_size = max_nodes_per_call if use_parent_grouping else max_nodes_per_call * 3
+
             # Get unclassified URLs at current depth
             urls_to_classify = self._get_unclassified_at_depth(
                 depth=current_depth,
-                limit=max_nodes_per_call * 3,  # Get extra for grouping
+                limit=effective_batch_size * 3 if use_parent_grouping else effective_batch_size,
             )
 
             if not urls_to_classify:
                 # Move to shallower depth
+                print(f"   Depth {current_depth}: No unclassified URLs, moving up", file=sys.stderr)
                 current_depth = self._get_max_unclassified_depth_below(current_depth)
+                if current_depth is not None:
+                    print(f"   Switching to depth {current_depth}", file=sys.stderr)
                 continue
 
-            # Group by parent for better context
-            by_parent = self._group_by_parent(urls_to_classify)
+            if use_parent_grouping:
+                # Deep depth: Group by parent for better context
+                by_parent = self._group_by_parent(urls_to_classify)
+                print(f"   Depth {current_depth}: Found {len(urls_to_classify)} URLs in {len(by_parent)} parent groups (parent-grouped)", file=sys.stderr)
+                batches = [(parent_id, group[:max_nodes_per_call]) for parent_id, group in by_parent.items()]
+            else:
+                # Shallow depth: Simple batching across parents for efficiency
+                print(f"   Depth {current_depth}: Found {len(urls_to_classify)} URLs (direct batching)", file=sys.stderr)
+                batches = []
+                for i in range(0, len(urls_to_classify), effective_batch_size):
+                    batch = urls_to_classify[i:i + effective_batch_size]
+                    # Use None as parent_id since we're batching across parents
+                    batches.append((None, batch))
 
-            for parent_id, sibling_group in by_parent.items():
+            for parent_id, sibling_group in batches:
                 if self.tokens_used >= self.budget_tokens:
                     break
-
-                # Limit group size
-                sibling_group = sibling_group[:max_nodes_per_call]
 
                 try:
                     # Build context
@@ -141,6 +167,16 @@ class ProgressiveClassifier:
 
                     self.session.commit()
 
+                    # Progress update
+                    print(
+                        f"   ✓ Classified {len(sibling_group)} URLs | "
+                        f"Total: {stats['urls_classified']} | "
+                        f"LLM calls: {stats['llm_calls']} | "
+                        f"Tokens: {self.tokens_used:,}/{self.budget_tokens:,} "
+                        f"({100*self.tokens_used/self.budget_tokens:.1f}%)",
+                        file=sys.stderr,
+                    )
+
                 except Exception as e:
                     stats["errors"] += 1
                     # Mark as failed but continue
@@ -158,6 +194,16 @@ class ProgressiveClassifier:
         class_run.finished_at = datetime.utcnow()
         class_run.tokens_used = self.tokens_used
         self.session.commit()
+
+        print("", file=sys.stderr)
+        print(f"✅ Classification {'budget exceeded' if self.tokens_used >= self.budget_tokens else 'complete'}!", file=sys.stderr)
+        print(f"   URLs classified: {stats['urls_classified']}", file=sys.stderr)
+        print(f"   LLM calls: {stats['llm_calls']}", file=sys.stderr)
+        print(f"   Errors: {stats['errors']}", file=sys.stderr)
+        print(f"   Tokens used: {self.tokens_used:,} / {self.budget_tokens:,} ({100*self.tokens_used/self.budget_tokens:.1f}%)", file=sys.stderr)
+        if self.tokens_used >= self.budget_tokens:
+            print(f"   ⚠️  Budget exceeded - run again with more tokens to continue", file=sys.stderr)
+        print("", file=sys.stderr)
 
         return stats
 
@@ -274,23 +320,62 @@ Respond ONLY with valid JSON (no markdown, no explanations):
   ]
 }}"""
 
+        # Define JSON schema for response
+        schema = {
+            "type": "object",
+            "properties": {
+                "classifications": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "url": {"type": "string"},
+                            "page_type": {"type": "string"},
+                            "author": {"type": ["string", "null"]},
+                            "work_title": {"type": ["string", "null"]},
+                            "language": {"type": "string"},
+                            "is_primary_content": {"type": "boolean"},
+                            "confidence": {"type": "number"},
+                        },
+                        "required": ["url", "page_type", "language", "is_primary_content", "confidence"],
+                    },
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "group_type": {"type": "string"},
+                            "work_title": {"type": "string"},
+                            "author": {"type": "string"},
+                            "language": {"type": "string"},
+                            "member_urls": {"type": "array", "items": {"type": "string"}},
+                        },
+                    },
+                },
+            },
+            "required": ["classifications", "groups"],
+        }
+
         # Call LLM
         try:
-            response = self.llm.chat(prompt)
+            response = self.llm.complete_json(prompt=prompt, schema=schema)
 
-            # Parse response
-            response_text = response.content if hasattr(response, "content") else str(response)
+            # Extract JSON from LLMResponse
+            parsed = response.json
 
-            # Remove markdown code blocks if present
-            if "```json" in response_text:
-                response_text = response_text.split("```json")[1].split("```")[0].strip()
-            elif "```" in response_text:
-                response_text = response_text.split("```")[1].split("```")[0].strip()
+            # If JSON parsing failed, try to extract from raw text
+            if not parsed:
+                response_text = response.raw_text or ""
+                # Remove markdown code blocks if present
+                if "```json" in response_text:
+                    response_text = response_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in response_text:
+                    response_text = response_text.split("```")[1].split("```")[0].strip()
+                parsed = json.loads(response_text)
 
-            parsed = json.loads(response_text)
-
-            # Count tokens (approximate if not provided)
-            tokens_used = getattr(response, "usage", {}).get("total_tokens", len(prompt) // 4 + len(response_text) // 4)
+            # Count tokens
+            tokens_used = (response.prompt_tokens or 0) + (response.completion_tokens or 0)
 
             return {
                 "classifications": parsed.get("classifications", []),
@@ -300,10 +385,11 @@ Respond ONLY with valid JSON (no markdown, no explanations):
 
         except Exception as e:
             # Return error classifications
+            # NOTE: context["urls"] is a list of dicts, not UrlCatalogEntry objects
             return {
                 "classifications": [
                     {
-                        "url": entry.url_canonical,
+                        "url": url_data.get("url", "unknown"),
                         "page_type": "other",
                         "author": None,
                         "work_title": None,
@@ -312,7 +398,7 @@ Respond ONLY with valid JSON (no markdown, no explanations):
                         "confidence": 0.0,
                         "error": str(e),
                     }
-                    for entry in context["urls"]
+                    for url_data in context["urls"]
                 ],
                 "groups": [],
                 "tokens_used": len(prompt) // 4,  # Approximate
