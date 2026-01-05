@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from dataclasses import dataclass
 from typing import Any
 
@@ -294,6 +295,72 @@ def build_candidates_from_work_metadata_evidence_row(
             notes=notes,
         )
     ]
+
+
+def adjust_candidates_for_author_lifespan(
+    *,
+    candidates: list[DateCandidate],
+    birth_year: int | None,
+    death_year: int | None,
+) -> list[DateCandidate]:
+    """
+    Adjust candidate confidence/roles based on author lifespan plausibility.
+
+    We do NOT delete candidates; we:
+    - reclassify clearly edition-ish OpenLibrary "first_publish_year" beyond death into edition_publication_date
+    - downweight implausible years for other sources (but keep them for audit/provenance)
+    """
+
+    def add_note(existing: str | None, note: str) -> str:
+        if not existing:
+            return note
+        if note in existing:
+            return existing
+        return f"{existing};{note}"
+
+    out: list[DateCandidate] = []
+    for c in candidates:
+        y = c.date.get("year")
+        if not isinstance(y, int):
+            out.append(c)
+            continue
+
+        # Too far after death: almost always an edition/catalogue year, not first publication.
+        if death_year is not None and y > death_year + 5:
+            if c.source_name == "openlibrary" and c.role == "first_publication_date":
+                out.append(
+                    replace(
+                        c,
+                        role="edition_publication_date",
+                        confidence=min(c.confidence, 0.40),
+                        notes=add_note(c.notes, "after_death_openlibrary_demoted"),
+                    )
+                )
+                continue
+
+            out.append(
+                replace(
+                    c,
+                    confidence=min(c.confidence * 0.15, c.confidence),
+                    notes=add_note(c.notes, "after_death_penalized"),
+                )
+            )
+            continue
+
+        # Too far before birth: usually an entity-resolution mismatch.
+        if birth_year is not None and y < birth_year - 10:
+            out.append(
+                replace(
+                    c,
+                    confidence=min(c.confidence * 0.15, c.confidence),
+                    notes=add_note(c.notes, "before_birth_penalized"),
+                )
+            )
+            continue
+
+        out.append(c)
+
+    return out
 
 
 def _strip_raw(d: dict[str, Any]) -> dict[str, Any]:

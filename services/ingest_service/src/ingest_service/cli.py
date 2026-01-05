@@ -2955,6 +2955,7 @@ def derive_work_dates(
     _ = core_settings.database_url
 
     from ingest_service.metadata.work_date_deriver import (
+        adjust_candidates_for_author_lifespan,
         best_candidate,
         build_candidates_from_edition_source_metadata,
         build_candidates_from_work_metadata_evidence_row,
@@ -3032,7 +3033,7 @@ def derive_work_dates(
                         )
                     ).all()
 
-                    candidates_by_role: dict[str, list] = {}
+                    all_candidates = []
                     for ed in edition_rows:
                         ed_id = str(ed.edition_id)
                         ed_url = ed.source_url
@@ -3040,7 +3041,7 @@ def derive_work_dates(
                         for c in build_candidates_from_edition_source_metadata(
                             edition_id=ed_id, source_url=ed_url, source_metadata=ed_meta
                         ):
-                            candidates_by_role.setdefault(c.role, []).append(c)
+                            all_candidates.append(c)
 
                     evidence_rows = session.execute(
                         select(
@@ -3064,7 +3065,17 @@ def derive_work_dates(
                             raw_payload=raw_payload,
                             source_locator=locator,
                         ):
-                            candidates_by_role.setdefault(c.role, []).append(c)
+                            all_candidates.append(c)
+
+                    all_candidates = adjust_candidates_for_author_lifespan(
+                        candidates=all_candidates,
+                        birth_year=birth_year,
+                        death_year=death_year,
+                    )
+
+                    candidates_by_role: dict[str, list] = {}
+                    for c in all_candidates:
+                        candidates_by_role.setdefault(c.role, []).append(c)
 
                     def pack(role: str) -> dict | None:
                         best = best_candidate(candidates_by_role.get(role, []))
@@ -3084,6 +3095,7 @@ def derive_work_dates(
                         "written_date": pack("written_date"),
                         "edition_publication_date": pack("edition_publication_date"),
                         "heuristic_publication_year": pack("heuristic_publication_year"),
+                        "ingest_upload_year": pack("ingest_upload_year"),
                     }
 
                     # Attach quick plausibility flags (do not reject; just record).

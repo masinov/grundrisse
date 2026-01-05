@@ -20,7 +20,7 @@ deterministic **date bundle** per work without re-fetching anything.
    - Derives a multi-date bundle per work from stored evidence only:
    - `grundrisse-ingest derive-work-dates --limit 200000 --progress-every 500`
    - Writes to `work_date_derived`:
-     - `dates`: a JSON bundle (written / first publication / edition-year / heuristic-year)
+     - `dates`: a JSON bundle (written / first publication / edition-year / heuristic-year / upload-year)
      - `display_date`: selected date for UI ordering
      - `display_date_field`: explicit selector (`first_publication_date` or `written_date`)
      - `display_year`: indexed year for filtering/sorting
@@ -35,4 +35,3 @@ deterministic **date bundle** per work without re-fetching anything.
 - We avoid day-long re-scrapes: extraction + derivation are **no-network**.
 - We keep provenance: evidence is stored (raw + structured) and derivation is reproducible.
 - UI does not hardcode date rules: `work_date_derived.display_date_field` makes the policy explicit.
-
