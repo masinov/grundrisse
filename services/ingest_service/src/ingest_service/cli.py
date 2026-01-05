@@ -3017,7 +3017,13 @@ def materialize_marxists_header(
                         if not isinstance(dates, dict):
                             return None
                         d = dates.get(key)
-                        return d if isinstance(d, dict) else None
+                        if not isinstance(d, dict):
+                            return None
+                        # Only persist structured dates that actually have a year.
+                        # This keeps DB-level nullability meaningful (count(col) reflects "has date").
+                        if not isinstance(d.get("year"), int):
+                            return None
+                        return d
 
                     row_obj.written_date = _date_or_none("written")
                     row_obj.first_published_date = _date_or_none("first_published")
