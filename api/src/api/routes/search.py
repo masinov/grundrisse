@@ -88,7 +88,6 @@ def search(
             select(
                 Work.work_id,
                 Work.title,
-                Work.publication_date,
                 WorkDateDerived.display_year,
                 WorkDateDerived.display_date_field,
                 Author.name_canonical.label("author_name"),
@@ -107,11 +106,7 @@ def search(
                 work_id=row.work_id,
                 title=row.title,
                 author_name=row.author_name,
-                publication_year=(
-                    row.display_year
-                    if isinstance(row.display_year, int)
-                    else (row.publication_date.get("year") if isinstance(row.publication_date, dict) else None)
-                ),
+                publication_year=row.display_year if isinstance(row.display_year, int) else None,
                 display_date_field=(
                     row.display_date_field if isinstance(row.display_date_field, str) else None
                 ),

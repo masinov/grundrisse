@@ -121,7 +121,6 @@ def _display_year_and_confidence(
     display_year: int | None,
     display_date: dict | None,
     display_date_field: str | None,
-    legacy_pub_date: dict | None,
 ) -> tuple[int | None, str | None, str | None]:
     if isinstance(display_year, int):
         dd = display_date if isinstance(display_date, dict) else {}
@@ -135,17 +134,7 @@ def _display_year_and_confidence(
             return display_year, "heuristic", field
         return display_year, "evidence", field
 
-    if not isinstance(legacy_pub_date, dict):
-        return None, None, None
-    year = legacy_pub_date.get("year")
-    if not isinstance(year, int):
-        return None, None, None
-    method = str(legacy_pub_date.get("method") or "").strip().lower()
-    confidence = legacy_pub_date.get("confidence")
-    conf = float(confidence) if isinstance(confidence, (int, float)) else None
-    if method in {"heuristic_url_year", ""} and (conf is None or conf <= 0.3):
-        return year, "heuristic", None
-    return year, "evidence", None
+    return None, None, None
 
 
 def _work_aggregates_subqueries():
@@ -216,7 +205,7 @@ def list_works(
     """List works with filters."""
     para_count_sq, lang_sq, concept_sq, claim_sq = _work_aggregates_subqueries()
 
-    year_expr = func.coalesce(WorkDateDerived.display_year, cast(Work.publication_date["year"].astext, Integer))
+    year_expr = WorkDateDerived.display_year
     concept_count_expr = func.coalesce(concept_sq.c.concept_mentions, 0)
     claim_count_expr = func.coalesce(claim_sq.c.claims, 0)
     has_extractions_expr = (concept_count_expr + claim_count_expr) > 0
@@ -226,7 +215,6 @@ def list_works(
             Work.work_id,
             Work.title,
             Work.author_id,
-            Work.publication_date,
             WorkDateDerived.display_year,
             WorkDateDerived.display_date,
             WorkDateDerived.display_date_field,
@@ -267,7 +255,6 @@ def list_works(
             display_year=r.display_year,
             display_date=r.display_date if isinstance(r.display_date, dict) else None,
             display_date_field=r.display_date_field,
-            legacy_pub_date=r.publication_date if isinstance(r.publication_date, dict) else None,
         )
         works.append(
             WorkListItem(
@@ -382,7 +369,6 @@ def get_work(db: DbSession, work_id: UUID) -> WorkDetailResponse:
         display_year=derived.display_year if derived else None,
         display_date=derived.display_date if derived and isinstance(derived.display_date, dict) else None,
         display_date_field=derived.display_date_field if derived else None,
-        legacy_pub_date=work.publication_date if isinstance(work.publication_date, dict) else None,
     )
 
     return WorkDetailResponse(
