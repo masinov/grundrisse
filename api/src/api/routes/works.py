@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import Integer, cast, func, select, union
+from sqlalchemy import Integer, String, cast, func, select, union
 
 from api.deps import DbSession
 from grundrisse_core.db.models import (
@@ -423,7 +423,8 @@ def get_work_paragraphs(
     para_dedup_sq = (
         select(
             Paragraph.order_index.label("order_in_edition"),
-            func.min(Paragraph.para_id).label("paragraph_id"),
+            # Postgres has no `min(uuid)`; use a stable representative UUID via min(text) instead.
+            func.min(cast(Paragraph.para_id, String)).label("paragraph_id"),
             func.min(Paragraph.text_normalized).label("text_content"),
         )
         .select_from(Paragraph)
