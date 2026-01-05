@@ -32,20 +32,18 @@ _COLLECTED_MARKERS = (
     "works volume",
 )
 
+# Strong markers that usually indicate a periodical/newspaper citation (vs collected/selected works volumes).
+# Keep this conservative: tokens like "vol."/"pp." appear in both periodical *and* collected-works citations.
 _PERIODICAL_MARKERS = (
     "no.",
     "issue",
     "whole no.",
-    "vol.",
-    "pp.",
     "pravda",
     "iskra",
     "new international",
+    "workers' weekly",
     "monthly review",
-    "review",
-    "gazette",
-    "bulletin",
-    "journal",
+    "socialist appeal",
     "new york",
 )
 
@@ -74,10 +72,11 @@ def _marxists_date_role_for_header_line(
     demote those just because `Source:` is edition-like.
     """
     if isinstance(line, str):
-        if marxists_line_has_periodical_markers(line):
-            return "first_publication_date", None, None
+        # Collected/selected works detection must win over periodical tokens like "No."/"Vol."/"pp.".
         if marxists_line_has_edition_markers(line):
             return "edition_publication_date", "edition_contamination", edition_confidence_cap
+        if marxists_line_has_periodical_markers(line):
+            return "first_publication_date", None, None
 
     if source_kind == "edition":
         return "edition_publication_date", "edition_contamination", edition_confidence_cap
