@@ -277,6 +277,21 @@ def build_candidates_from_work_metadata_evidence_row(
                     role = "ingest_upload_year"
                     notes = "upload_or_transcription_year"
                     confidence = min(confidence, 0.25)
+        else:
+            # Some legacy marxists-derived evidence (e.g. `marxists_page`) stores a human excerpt instead of header fields.
+            # Detect edition contamination and upload/transcription years from that excerpt to avoid polluting
+            # `first_publication_date` with Collected/Selected Works edition years.
+            excerpt = raw_payload.get("excerpt") if isinstance(raw_payload, dict) else None
+            if isinstance(excerpt, str):
+                lower_excerpt = excerpt.lower()
+                if any(m in lower_excerpt for m in _COLLECTED_MARKERS):
+                    role = "edition_publication_date"
+                    notes = "edition_contamination"
+                    confidence = min(confidence, 0.55)
+                elif any(m in lower_excerpt for m in _UPLOAD_MARKERS):
+                    role = "ingest_upload_year"
+                    notes = "upload_or_transcription_year"
+                    confidence = min(confidence, 0.25)
 
     return [
         DateCandidate(
