@@ -25,6 +25,10 @@ _COLLECTED_MARKERS = (
     "foreign languages publishing house",
     "volume",
     "vol.",
+    "selected articles",
+    "selected writings",
+    "selected works of",
+    "works volume",
 )
 
 
@@ -201,8 +205,49 @@ def build_candidates_from_work_metadata_evidence_row(
 
     confidence = float(score) if isinstance(score, (int, float)) else 0.0
     role = "first_publication_date"
+    notes: str | None = None
+
+    # Heuristic URL years are useful as a last resort but should never be treated as strong evidence.
     if source_name == "heuristic_url_year":
-        role = "heuristic_publication_year"
+        return [
+            DateCandidate(
+                role="heuristic_publication_year",
+                date={
+                    "year": y,
+                    "month": extracted.get("month"),
+                    "day": extracted.get("day"),
+                    "precision": extracted.get("precision") or "year",
+                    "method": extracted.get("method") or source_name,
+                },
+                confidence=confidence,
+                source_name=source_name,
+                source_locator=source_locator,
+                provenance={"raw_payload": raw_payload},
+            )
+        ]
+
+    # A key gotcha: our earlier pipeline stored marxists header-derived years as "publication" even when the
+    # header clearly refers to a *Collected Works/Selected Works/Volume* edition (i.e., not true first-publication).
+    # When the raw payload includes the header fields, detect "edition" markers and re-route accordingly.
+    if source_name in {"marxists_ingested_html", "marxists", "marxists_source_metadata"}:
+        header = raw_payload.get("header") if isinstance(raw_payload, dict) else None
+        fields = header.get("fields") if isinstance(header, dict) else None
+        if isinstance(fields, dict):
+            src_line = fields.get("Source") if isinstance(fields.get("Source"), str) else None
+            pub_line = fields.get("Published") if isinstance(fields.get("Published"), str) else None
+            fp_line = fields.get("First Published") if isinstance(fields.get("First Published"), str) else None
+
+            source_kind = classify_marxists_source_kind(src_line)
+            edition_like = (
+                source_kind == "edition"
+                or marxists_line_has_edition_markers(pub_line)
+                or marxists_line_has_edition_markers(fp_line)
+            )
+            if edition_like:
+                role = "edition_publication_date"
+                notes = "edition_contamination"
+                # Keep it present for auditing, but reduce confidence so it won't accidentally dominate.
+                confidence = min(confidence, 0.55)
 
     return [
         DateCandidate(
@@ -218,6 +263,7 @@ def build_candidates_from_work_metadata_evidence_row(
             source_name=source_name,
             source_locator=source_locator,
             provenance={"raw_payload": raw_payload},
+            notes=notes,
         )
     ]
 
@@ -229,4 +275,3 @@ def _strip_raw(d: dict[str, Any]) -> dict[str, Any]:
         "day": d.get("day"),
         "precision": d.get("precision") or "year",
     }
-
