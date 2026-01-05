@@ -32,6 +32,58 @@ _COLLECTED_MARKERS = (
     "works volume",
 )
 
+_PERIODICAL_MARKERS = (
+    "no.",
+    "issue",
+    "whole no.",
+    "vol.",
+    "pp.",
+    "pravda",
+    "iskra",
+    "new international",
+    "monthly review",
+    "review",
+    "gazette",
+    "bulletin",
+    "journal",
+    "new york",
+)
+
+
+def marxists_line_has_periodical_markers(line: str | None) -> bool:
+    if not line or not isinstance(line, str):
+        return False
+    lower = line.lower()
+    return any(m in lower for m in _PERIODICAL_MARKERS)
+
+
+def _marxists_date_role_for_header_line(
+    *,
+    line: str | None,
+    source_kind: str,
+    default_role: str,
+    edition_confidence_cap: float,
+) -> tuple[str, str | None, float | None]:
+    """
+    Decide whether a marxists header-derived date should be treated as:
+      - `first_publication_date` (e.g., "Pravda No. 49, March 4, 1923")
+      - `edition_publication_date` (e.g., "Collected Works ... Progress Publishers ... Volume ...")
+
+    Important nuance: many marxists pages cite a *Collected Works* volume in `Source:`,
+    while the actual *first publication* appears in `First Published:`. We should not
+    demote those just because `Source:` is edition-like.
+    """
+    if isinstance(line, str):
+        if marxists_line_has_periodical_markers(line):
+            return "first_publication_date", None, None
+        if marxists_line_has_edition_markers(line):
+            return "edition_publication_date", "edition_contamination", edition_confidence_cap
+
+    if source_kind == "edition":
+        return "edition_publication_date", "edition_contamination", edition_confidence_cap
+
+    return default_role, None, None
+
 
 def classify_marxists_source_kind(source_line: str | None) -> str:
     """
@@ -46,7 +98,7 @@ def classify_marxists_source_kind(source_line: str | None) -> str:
     if any(m in lower for m in _COLLECTED_MARKERS):
         return "edition"
     # Periodical / issue-ish markers.
-    if any(m in lower for m in ("no.", "issue", "whole no.", "pp.", "pravda", "iskra", "new international")):
+    if marxists_line_has_periodical_markers(source_line):
         return "periodical"
     return "unknown"
 
@@ -116,7 +168,7 @@ def build_candidates_from_edition_source_metadata(
     first_published_line = fields.get("First Published") if isinstance(fields.get("First Published"), str) else None
 
     source_kind = classify_marxists_source_kind(source_line)
-    edition_like = source_kind == "edition" or marxists_line_has_edition_markers(published_line) or marxists_line_has_edition_markers(first_published_line)
+    edition_like_source = source_kind == "edition"
 
     def prov(field: str, raw: str | None) -> dict[str, Any]:
         return {
@@ -142,8 +194,15 @@ def build_candidates_from_edition_source_metadata(
 
     first_pub = dates.get("first_published")
     if isinstance(first_pub, dict) and isinstance(first_pub.get("year"), int):
-        role = "edition_publication_date" if edition_like else "first_publication_date"
-        conf = 0.60 if edition_like else 0.95
+        role, note, cap = _marxists_date_role_for_header_line(
+            line=first_published_line,
+            source_kind=source_kind,
+            default_role="first_publication_date",
+            edition_confidence_cap=0.60,
+        )
+        conf = 0.95
+        if cap is not None:
+            conf = min(conf, cap)
         out.append(
             DateCandidate(
                 role=role,
@@ -152,14 +211,21 @@ def build_candidates_from_edition_source_metadata(
                 source_name="marxists_source_metadata",
                 source_locator=source_url,
                 provenance=prov("First Published", first_published_line),
-                notes="edition_contamination" if edition_like else None,
+                notes=note,
             )
         )
 
     published = dates.get("published")
     if isinstance(published, dict) and isinstance(published.get("year"), int):
-        role = "edition_publication_date" if edition_like else "first_publication_date"
-        conf = 0.55 if edition_like else 0.90
+        role, note, cap = _marxists_date_role_for_header_line(
+            line=published_line,
+            source_kind=source_kind,
+            default_role="first_publication_date",
+            edition_confidence_cap=0.55,
+        )
+        conf = 0.90
+        if cap is not None:
+            conf = min(conf, cap)
         out.append(
             DateCandidate(
                 role=role,
@@ -168,12 +234,12 @@ def build_candidates_from_edition_source_metadata(
                 source_name="marxists_source_metadata",
                 source_locator=source_url,
                 provenance=prov("Published", published_line),
-                notes="edition_contamination" if edition_like else None,
+                notes=note,
             )
         )
 
     # Source line often includes a periodical issue date (e.g., "New International ... July 1944").
-    if not edition_like and source_line:
+    if not edition_like_source and source_line:
         parsed = parse_dateish(source_line)
         if isinstance(parsed, dict) and isinstance(parsed.get("year"), int):
             out.append(
