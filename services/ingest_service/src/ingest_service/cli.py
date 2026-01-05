@@ -30,6 +30,7 @@ from grundrisse_core.db.models import (
     WorkDateFinal,
     WorkDateDerivationRun,
     WorkDateDerived,
+    EditionSourceHeader,
     WorkMetadataEvidence,
     WorkMetadataRun,
 )
@@ -2919,6 +2920,128 @@ def extract_marxists_source_metadata(
                 failed += 1
 
         session.commit()
+
+    typer.echo("")
+    typer.echo("=" * 60)
+    typer.echo(f"Editions scanned:  {scanned}")
+    if dry_run:
+        typer.echo(f"Editions would update: {updated}")
+    else:
+        typer.echo(f"Editions updated:  {updated}")
+    typer.echo(f"Editions skipped:  {skipped}")
+    typer.echo(f"Editions failed:   {failed}")
+
+
+@app.command("materialize-marxists-header")
+def materialize_marxists_header(
+    *,
+    limit: int = typer.Option(200000, help="Max editions to scan."),
+    only_missing: bool = typer.Option(True, help="Only process editions with no edition_source_header row."),
+    force: bool = typer.Option(False, help="Overwrite existing edition_source_header rows."),
+    dry_run: bool = typer.Option(False, help="Show proposed writes without writing to DB."),
+    progress_every: int = typer.Option(500, help="Print progress every N scanned editions (0 disables)."),
+) -> None:
+    """
+    Materialize a normalized `edition_source_header` row from `edition.source_metadata` (no network).
+
+    This provides a clean, query-friendly representation of marxists.org header fields (Written/Source/First Published/etc.)
+    while keeping the raw fields/dates for provenance.
+    """
+    _ = core_settings.database_url
+
+    from datetime import timezone
+
+    scanned = 0
+    updated = 0
+    skipped = 0
+    failed = 0
+
+    with SessionLocal() as session:
+        q = (
+            select(Edition.edition_id, Edition.source_url, Edition.source_metadata)
+            .where(Edition.source_url.ilike("%marxists.org%"))
+            .order_by(Edition.edition_id)
+        )
+        rows = session.execute(q.limit(limit)).all()
+
+        for row in rows:
+            scanned += 1
+            if progress_every > 0 and (scanned == 1 or scanned % progress_every == 0):
+                msg = "would_update" if dry_run else "updated"
+                typer.echo(f"[marxists-header] scanned={scanned} {msg}={updated} skipped={skipped} failed={failed}")
+
+            edition_id = row.edition_id
+            meta = row.source_metadata if isinstance(row.source_metadata, dict) else None
+            if not meta:
+                skipped += 1
+                continue
+
+            try:
+                with session.begin_nested():
+                    existing = session.get(EditionSourceHeader, edition_id)
+                    if existing is not None and not force:
+                        if only_missing:
+                            skipped += 1
+                            continue
+                        skipped += 1
+                        continue
+
+                    # Only materialize for metadata that looks like the marxists extractor output.
+                    source = meta.get("source")
+                    if isinstance(source, str) and "marxists" not in source.lower():
+                        skipped += 1
+                        continue
+
+                    fields = meta.get("fields") if isinstance(meta.get("fields"), dict) else {}
+                    dates = meta.get("dates") if isinstance(meta.get("dates"), dict) else None
+                    editorial_intro = meta.get("editorial_intro")
+
+                    extracted_at = datetime.utcnow().replace(tzinfo=timezone.utc)
+                    extracted_at_raw = meta.get("extracted_at")
+                    if isinstance(extracted_at_raw, str):
+                        try:
+                            extracted_at = datetime.fromisoformat(extracted_at_raw.replace("Z", "+00:00"))
+                        except Exception:
+                            extracted_at = datetime.utcnow().replace(tzinfo=timezone.utc)
+
+                    row_obj = existing or EditionSourceHeader(edition_id=edition_id)
+                    row_obj.source_name = "marxists"
+                    row_obj.extracted_at = extracted_at
+                    row_obj.raw_object_key = meta.get("raw_object_key") if isinstance(meta.get("raw_object_key"), str) else None
+                    row_obj.raw_sha256 = meta.get("raw_sha256") if isinstance(meta.get("raw_sha256"), str) else None
+                    row_obj.raw_fields = fields if isinstance(fields, dict) else {}
+                    row_obj.raw_dates = dates if isinstance(dates, dict) else None
+                    row_obj.editorial_intro = editorial_intro if isinstance(editorial_intro, (dict, list)) else None
+
+                    def _date_or_none(key: str) -> dict | None:
+                        if not isinstance(dates, dict):
+                            return None
+                        d = dates.get(key)
+                        return d if isinstance(d, dict) else None
+
+                    row_obj.written_date = _date_or_none("written")
+                    row_obj.first_published_date = _date_or_none("first_published")
+                    row_obj.published_date = _date_or_none("published")
+
+                    row_obj.source_citation_raw = fields.get("Source") if isinstance(fields.get("Source"), str) else None
+                    row_obj.translated_raw = fields.get("Translated") if isinstance(fields.get("Translated"), str) else None
+                    row_obj.transcription_markup_raw = fields.get("Transcription/Markup") if isinstance(fields.get("Transcription/Markup"), str) else None
+                    row_obj.public_domain_raw = fields.get("Public Domain") if isinstance(fields.get("Public Domain"), str) else None
+
+                    if dry_run:
+                        updated += 1
+                        continue
+
+                    session.add(row_obj)
+                    updated += 1
+
+            except Exception as exc:
+                session.rollback()
+                failed += 1
+                typer.echo(f"[marxists-header] ERROR edition_id={edition_id}: {exc}")
+
+        if not dry_run:
+            session.commit()
 
     typer.echo("")
     typer.echo("=" * 60)

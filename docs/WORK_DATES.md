@@ -12,6 +12,10 @@ deterministic **date bundle** per work without re-fetching anything.
    - Backfills `edition.source_metadata` from already-ingested marxists.org pages:
    - `grundrisse-ingest extract-marxists-source-metadata --limit 200000 --progress-every 500`
 
+2b) **Materialize normalized header table** (no network)
+   - Writes `edition_source_header` from `edition.source_metadata`:
+   - `grundrisse-ingest materialize-marxists-header --limit 200000 --progress-every 500`
+
 3) **Fetch external date evidence** (network, append-only)
    - `grundrisse-ingest resolve-publication-dates` writes candidates into `work_metadata_evidence`.
    - Prefer `--sources wikidata,openlibrary` when you want original-publication dates for non-marxists works.
@@ -29,6 +33,7 @@ deterministic **date bundle** per work without re-fetching anything.
 
 - `0018_edition_source_metadata`: adds `edition.source_metadata`
 - `0019_work_date_derived`: adds `work_date_derivation_run` + `work_date_derived`
+- `0020_edition_source_header`: adds `edition_source_header`
 
 ### Why this exists
 

@@ -648,6 +648,43 @@ class WorkDateDerived(Base):
     __table_args__ = (Index("ix_work_date_derived_display_year", "display_year"),)
 
 
+class EditionSourceHeader(Base):
+    """
+    Normalized view of source-specific per-edition header metadata (e.g., marxists.org "Written/Source/First Published").
+
+    Keep both:
+    - raw extracted structures for provenance
+    - structured fields for easy querying
+    """
+
+    __tablename__ = "edition_source_header"
+
+    edition_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("edition.edition_id"), primary_key=True
+    )
+
+    source_name: Mapped[str] = mapped_column(String(64), nullable=False, default="marxists")
+    extracted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    raw_object_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    raw_fields: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    raw_dates: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    editorial_intro: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    written_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    first_published_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    published_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    source_citation_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    translated_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transcription_markup_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    public_domain_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    edition: Mapped[Edition] = relationship()
+
+
 class AuthorMetadataRun(Base):
     __tablename__ = "author_metadata_run"
 
@@ -724,6 +761,7 @@ def import_models() -> None:
         WorkDateFinal,
         WorkDateDerivationRun,
         WorkDateDerived,
+        EditionSourceHeader,
         AuthorMetadataRun,
         AuthorMetadataEvidence,
     )
