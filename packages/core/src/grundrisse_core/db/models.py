@@ -594,6 +594,60 @@ class WorkDateFinal(Base):
     )
 
 
+class WorkDateDerivationRun(Base):
+    """
+    No-network derivation run that produces `work_date_derived` rows from stored evidence:
+    - edition.source_metadata (ingested HTML headers)
+    - work_metadata_evidence (Wikidata/OpenLibrary/etc.)
+    """
+
+    __tablename__ = "work_date_derivation_run"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    git_commit_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    strategy: Mapped[str] = mapped_column(String(64), nullable=False)
+    params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="started")
+    error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    works_scanned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    works_derived: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    works_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    works_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class WorkDateDerived(Base):
+    """
+    Derived multi-date bundle for a Work, computed deterministically from stored evidence.
+
+    This is the "single source of truth" for UI chronology and for graph ordering.
+    """
+
+    __tablename__ = "work_date_derived"
+
+    work_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("work.work_id"), primary_key=True)
+
+    # Multi-date bundle (roles + provenance).
+    dates: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+    # Selected display date (e.g., first_publication_date, falling back to written_date).
+    display_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    display_date_field: Mapped[str] = mapped_column(String(64), nullable=False, default="unknown")
+    display_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Provenance
+    derived_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("work_date_derivation_run.run_id"), nullable=True
+    )
+    derived_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (Index("ix_work_date_derived_display_year", "display_year"),)
+
+
 class AuthorMetadataRun(Base):
     __tablename__ = "author_metadata_run"
 
@@ -668,6 +722,8 @@ def import_models() -> None:
         WorkMetadataRun,
         WorkMetadataEvidence,
         WorkDateFinal,
+        WorkDateDerivationRun,
+        WorkDateDerived,
         AuthorMetadataRun,
         AuthorMetadataEvidence,
     )

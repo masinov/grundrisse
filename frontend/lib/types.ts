@@ -33,6 +33,7 @@ export interface WorkSummary {
   title_canonical: string | null;
   publication_year: number | null;
   date_confidence: string | null;
+  display_date_field: string | null;
   language: string | null;
   paragraph_count: number;
   has_extractions: boolean;
@@ -56,6 +57,7 @@ export interface WorkListItem {
   author_name: string;
   publication_year: number | null;
   date_confidence: string | null;
+  display_date_field: string | null;
   language: string | null;
   paragraph_count: number;
   has_extractions: boolean;
@@ -93,6 +95,7 @@ export interface WorkDetail {
   author: AuthorInfo;
   publication_year: number | null;
   date_confidence: string | null;
+  display_date_field: string | null;
   source_url: string | null;
   editions: EditionInfo[];
   has_extractions: boolean;
@@ -150,6 +153,7 @@ export interface WorkSearchResult {
   title: string;
   author_name: string;
   publication_year: number | null;
+  display_date_field: string | null;
 }
 
 export interface SearchResponse {

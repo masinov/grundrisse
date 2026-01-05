@@ -18,6 +18,7 @@ from grundrisse_core.db.models import (
     SentenceSpan,
     SpanGroup,
     Work,
+    WorkDateDerived,
 )
 
 router = APIRouter()
@@ -32,6 +33,7 @@ class WorkListItem(BaseModel):
     author_name: str
     publication_year: int | None
     date_confidence: str | None
+    display_date_field: str | None
     language: str | None
     paragraph_count: int
     has_extractions: bool
@@ -81,6 +83,7 @@ class WorkDetailResponse(BaseModel):
     author: AuthorInfo
     publication_year: int | None
     date_confidence: str | None
+    display_date_field: str | None
     source_url: str | None
     editions: list[EditionInfo]
     has_extractions: bool
@@ -113,19 +116,36 @@ class WorkParagraphsResponse(BaseModel):
     paragraphs: list[ParagraphSummary]
 
 
-def _pub_year_and_confidence(pub_date: dict | None) -> tuple[int | None, str | None]:
-    if not isinstance(pub_date, dict):
-        return None, None
-    year = pub_date.get("year")
+def _display_year_and_confidence(
+    *,
+    display_year: int | None,
+    display_date: dict | None,
+    display_date_field: str | None,
+    legacy_pub_date: dict | None,
+) -> tuple[int | None, str | None, str | None]:
+    if isinstance(display_year, int):
+        dd = display_date if isinstance(display_date, dict) else {}
+        source = str(dd.get("source") or "").strip().lower()
+        confidence = dd.get("confidence")
+        conf = float(confidence) if isinstance(confidence, (int, float)) else None
+        field = display_date_field if isinstance(display_date_field, str) else None
+        if source == "heuristic_url_year" or field == "heuristic_publication_year" or (
+            conf is not None and conf <= 0.3
+        ):
+            return display_year, "heuristic", field
+        return display_year, "evidence", field
+
+    if not isinstance(legacy_pub_date, dict):
+        return None, None, None
+    year = legacy_pub_date.get("year")
     if not isinstance(year, int):
-        return None, None
-    method = str(pub_date.get("method") or "").strip().lower()
-    confidence = pub_date.get("confidence")
+        return None, None, None
+    method = str(legacy_pub_date.get("method") or "").strip().lower()
+    confidence = legacy_pub_date.get("confidence")
     conf = float(confidence) if isinstance(confidence, (int, float)) else None
-    # Minimal labeling for MVP.
     if method in {"heuristic_url_year", ""} and (conf is None or conf <= 0.3):
-        return year, "heuristic"
-    return year, "evidence"
+        return year, "heuristic", None
+    return year, "evidence", None
 
 
 def _work_aggregates_subqueries():
@@ -196,7 +216,7 @@ def list_works(
     """List works with filters."""
     para_count_sq, lang_sq, concept_sq, claim_sq = _work_aggregates_subqueries()
 
-    year_expr = cast(Work.publication_date["year"].astext, Integer)
+    year_expr = func.coalesce(WorkDateDerived.display_year, cast(Work.publication_date["year"].astext, Integer))
     concept_count_expr = func.coalesce(concept_sq.c.concept_mentions, 0)
     claim_count_expr = func.coalesce(claim_sq.c.claims, 0)
     has_extractions_expr = (concept_count_expr + claim_count_expr) > 0
@@ -207,6 +227,9 @@ def list_works(
             Work.title,
             Work.author_id,
             Work.publication_date,
+            WorkDateDerived.display_year,
+            WorkDateDerived.display_date,
+            WorkDateDerived.display_date_field,
             Author.name_canonical.label("author_name"),
             func.coalesce(lang_sq.c.language, Work.original_language).label("language"),
             func.coalesce(para_count_sq.c.paragraph_count, 0).label("paragraph_count"),
@@ -214,6 +237,7 @@ def list_works(
         )
         .select_from(Work)
         .join(Author, Author.author_id == Work.author_id)
+        .outerjoin(WorkDateDerived, WorkDateDerived.work_id == Work.work_id)
         .outerjoin(para_count_sq, para_count_sq.c.work_id == Work.work_id)
         .outerjoin(lang_sq, lang_sq.c.work_id == Work.work_id)
         .outerjoin(concept_sq, concept_sq.c.work_id == Work.work_id)
@@ -239,7 +263,12 @@ def list_works(
 
     works: list[WorkListItem] = []
     for r in rows:
-        pub_year, date_conf = _pub_year_and_confidence(r.publication_date if isinstance(r.publication_date, dict) else None)
+        pub_year, date_conf, display_field = _display_year_and_confidence(
+            display_year=r.display_year,
+            display_date=r.display_date if isinstance(r.display_date, dict) else None,
+            display_date_field=r.display_date_field,
+            legacy_pub_date=r.publication_date if isinstance(r.publication_date, dict) else None,
+        )
         works.append(
             WorkListItem(
                 work_id=r.work_id,
@@ -248,6 +277,7 @@ def list_works(
                 author_name=r.author_name,
                 publication_year=pub_year,
                 date_confidence=date_conf,
+                display_date_field=display_field,
                 language=r.language,
                 paragraph_count=r.paragraph_count or 0,
                 has_extractions=bool(r.has_extractions),
@@ -347,7 +377,13 @@ def get_work(db: DbSession, work_id: UUID) -> WorkDetailResponse:
         else None
     )
 
-    pub_year, date_conf = _pub_year_and_confidence(work.publication_date if isinstance(work.publication_date, dict) else None)
+    derived = db.get(WorkDateDerived, work_id)
+    pub_year, date_conf, display_field = _display_year_and_confidence(
+        display_year=derived.display_year if derived else None,
+        display_date=derived.display_date if derived and isinstance(derived.display_date, dict) else None,
+        display_date_field=derived.display_date_field if derived else None,
+        legacy_pub_date=work.publication_date if isinstance(work.publication_date, dict) else None,
+    )
 
     return WorkDetailResponse(
         work_id=work.work_id,
@@ -356,6 +392,7 @@ def get_work(db: DbSession, work_id: UUID) -> WorkDetailResponse:
         author=AuthorInfo(author_id=author.author_id, name_canonical=author.name_canonical),
         publication_year=pub_year,
         date_confidence=date_conf,
+        display_date_field=display_field,
         source_url=source_url,
         editions=editions,
         has_extractions=has_extractions,

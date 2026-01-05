@@ -1,0 +1,232 @@
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from typing import Any
+
+from ingest_service.parse.marxists_header_metadata import parse_dateish
+
+
+@dataclass(frozen=True)
+class DateCandidate:
+    role: str
+    date: dict[str, Any]
+    confidence: float
+    source_name: str
+    source_locator: str | None
+    provenance: dict[str, Any]
+    notes: str | None = None
+
+
+_COLLECTED_MARKERS = (
+    "collected works",
+    "selected works",
+    "progress publishers",
+    "foreign languages publishing house",
+    "volume",
+    "vol.",
+)
+
+
+def classify_marxists_source_kind(source_line: str | None) -> str:
+    """
+    Classify the header `Source:` line into:
+      - edition: selected/collected works, publishers, volumes (high contamination risk)
+      - periodical: issue/journal/newspaper-like citations
+      - unknown
+    """
+    if not source_line or not isinstance(source_line, str):
+        return "unknown"
+    lower = source_line.lower()
+    if any(m in lower for m in _COLLECTED_MARKERS):
+        return "edition"
+    # Periodical / issue-ish markers.
+    if any(m in lower for m in ("no.", "issue", "whole no.", "pp.", "pravda", "iskra", "new international")):
+        return "periodical"
+    return "unknown"
+
+
+def marxists_line_has_edition_markers(line: str | None) -> bool:
+    if not line or not isinstance(line, str):
+        return False
+    lower = line.lower()
+    return any(m in lower for m in _COLLECTED_MARKERS)
+
+
+def derive_display_date(*, bundle: dict[str, Any]) -> tuple[dict[str, Any] | None, str, int | None]:
+    """
+    Rule: display first_publication_date, else written_date.
+    Returns (display_date, display_date_field, display_year).
+    """
+    first_pub = bundle.get("first_publication_date")
+    if isinstance(first_pub, dict) and isinstance(first_pub.get("date"), dict):
+        d = dict(first_pub["date"])
+        d["confidence"] = first_pub.get("confidence")
+        d["source"] = first_pub.get("source")
+        return d, "first_publication_date", _year_from(d)
+
+    written = bundle.get("written_date")
+    if isinstance(written, dict) and isinstance(written.get("date"), dict):
+        d = dict(written["date"])
+        d["confidence"] = written.get("confidence")
+        d["source"] = written.get("source")
+        return d, "written_date", _year_from(d)
+
+    return None, "unknown", None
+
+
+def _year_from(d: dict[str, Any]) -> int | None:
+    y = d.get("year")
+    return y if isinstance(y, int) else None
+
+
+def best_candidate(cands: list[DateCandidate]) -> DateCandidate | None:
+    if not cands:
+        return None
+    return sorted(cands, key=lambda c: (-c.confidence, c.source_name, str(c.source_locator or "")))[0]
+
+
+def build_candidates_from_edition_source_metadata(
+    *,
+    edition_id: str,
+    source_url: str | None,
+    source_metadata: dict[str, Any] | None,
+) -> list[DateCandidate]:
+    if not source_metadata or not isinstance(source_metadata, dict):
+        return []
+    fields = source_metadata.get("fields")
+    dates = source_metadata.get("dates")
+    if not isinstance(fields, dict) or not isinstance(dates, dict):
+        return []
+
+    out: list[DateCandidate] = []
+
+    source_line = fields.get("Source") if isinstance(fields.get("Source"), str) else None
+    published_line = fields.get("Published") if isinstance(fields.get("Published"), str) else None
+    first_published_line = fields.get("First Published") if isinstance(fields.get("First Published"), str) else None
+
+    source_kind = classify_marxists_source_kind(source_line)
+    edition_like = source_kind == "edition" or marxists_line_has_edition_markers(published_line) or marxists_line_has_edition_markers(first_published_line)
+
+    def prov(field: str, raw: str | None) -> dict[str, Any]:
+        return {
+            "edition_id": edition_id,
+            "source_url": source_url,
+            "header_field": field,
+            "header_value": raw,
+            "source_kind": source_kind,
+        }
+
+    written = dates.get("written")
+    if isinstance(written, dict) and isinstance(written.get("year"), int):
+        out.append(
+            DateCandidate(
+                role="written_date",
+                date=_strip_raw(written),
+                confidence=0.85,
+                source_name="marxists_source_metadata",
+                source_locator=source_url,
+                provenance=prov("Written", fields.get("Written") if isinstance(fields.get("Written"), str) else None),
+            )
+        )
+
+    first_pub = dates.get("first_published")
+    if isinstance(first_pub, dict) and isinstance(first_pub.get("year"), int):
+        role = "edition_publication_date" if edition_like else "first_publication_date"
+        conf = 0.60 if edition_like else 0.95
+        out.append(
+            DateCandidate(
+                role=role,
+                date=_strip_raw(first_pub),
+                confidence=conf,
+                source_name="marxists_source_metadata",
+                source_locator=source_url,
+                provenance=prov("First Published", first_published_line),
+                notes="edition_contamination" if edition_like else None,
+            )
+        )
+
+    published = dates.get("published")
+    if isinstance(published, dict) and isinstance(published.get("year"), int):
+        role = "edition_publication_date" if edition_like else "first_publication_date"
+        conf = 0.55 if edition_like else 0.90
+        out.append(
+            DateCandidate(
+                role=role,
+                date=_strip_raw(published),
+                confidence=conf,
+                source_name="marxists_source_metadata",
+                source_locator=source_url,
+                provenance=prov("Published", published_line),
+                notes="edition_contamination" if edition_like else None,
+            )
+        )
+
+    # Source line often includes a periodical issue date (e.g., "New International ... July 1944").
+    if not edition_like and source_line:
+        parsed = parse_dateish(source_line)
+        if isinstance(parsed, dict) and isinstance(parsed.get("year"), int):
+            out.append(
+                DateCandidate(
+                    role="first_publication_date",
+                    date=_strip_raw(parsed),
+                    confidence=0.90 if source_kind == "periodical" else 0.75,
+                    source_name="marxists_source_metadata",
+                    source_locator=source_url,
+                    provenance=prov("Source", source_line),
+                )
+            )
+
+    return out
+
+
+_YEAR_RE = re.compile(r"^\d{4}$")
+
+
+def build_candidates_from_work_metadata_evidence_row(
+    *,
+    source_name: str,
+    score: float | None,
+    extracted: dict[str, Any] | None,
+    raw_payload: dict[str, Any] | None,
+    source_locator: str | None,
+) -> list[DateCandidate]:
+    if not extracted or not isinstance(extracted, dict):
+        return []
+    y = extracted.get("year")
+    if not isinstance(y, int) and isinstance(y, str) and _YEAR_RE.match(y):
+        y = int(y)
+    if not isinstance(y, int):
+        return []
+
+    confidence = float(score) if isinstance(score, (int, float)) else 0.0
+    role = "first_publication_date"
+    if source_name == "heuristic_url_year":
+        role = "heuristic_publication_year"
+
+    return [
+        DateCandidate(
+            role=role,
+            date={
+                "year": y,
+                "month": extracted.get("month"),
+                "day": extracted.get("day"),
+                "precision": extracted.get("precision") or "year",
+                "method": extracted.get("method") or source_name,
+            },
+            confidence=confidence,
+            source_name=source_name,
+            source_locator=source_locator,
+            provenance={"raw_payload": raw_payload},
+        )
+    ]
+
+
+def _strip_raw(d: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "year": d.get("year"),
+        "month": d.get("month"),
+        "day": d.get("day"),
+        "precision": d.get("precision") or "year",
+    }
+

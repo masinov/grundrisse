@@ -28,6 +28,8 @@ from grundrisse_core.db.models import (
     TextBlock,
     Work,
     WorkDateFinal,
+    WorkDateDerivationRun,
+    WorkDateDerived,
     WorkMetadataEvidence,
     WorkMetadataRun,
 )
@@ -664,9 +666,9 @@ def _candidate_from_ingested_marxists_html(
                 # Many pages omit "First Published" / "Published" but include a detailed "Source" with issue/date.
                 # Use it cautiously at the threshold edge.
                 if _marxists_header_line_is_probably_first_publication(source_raw):
-                    from ingest_service.parse.marxists_header_metadata import _parse_dateish
+                    from ingest_service.parse.marxists_header_metadata import parse_dateish
 
-                    parsed = _parse_dateish(source_raw if isinstance(source_raw, str) else None)
+                    parsed = parse_dateish(source_raw if isinstance(source_raw, str) else None)
                     if isinstance(parsed, dict) and isinstance(parsed.get("year"), int):
                         chosen = parsed
                         chosen_field = "Source"
@@ -2927,6 +2929,227 @@ def extract_marxists_source_metadata(
         typer.echo(f"Editions updated:  {updated}")
     typer.echo(f"Editions skipped:  {skipped}")
     typer.echo(f"Editions failed:   {failed}")
+
+
+@app.command("derive-work-dates")
+def derive_work_dates(
+    *,
+    limit: int = typer.Option(20000, help="Max works to scan."),
+    only_missing: bool = typer.Option(True, help="Only process works with no work_date_derived row."),
+    force: bool = typer.Option(False, help="Overwrite existing work_date_derived rows."),
+    dry_run: bool = typer.Option(False, help="Show proposed derived rows without writing to DB."),
+    progress_every: int = typer.Option(250, help="Print progress every N scanned works (0 disables)."),
+) -> None:
+    """
+    Deterministically derive a multi-date bundle for each work from stored evidence only:
+    - edition.source_metadata (ingested HTML header fields)
+    - work_metadata_evidence (Wikidata/OpenLibrary/heuristics previously fetched)
+
+    This command performs NO network access and can be safely re-run whenever the derivation policy changes.
+
+    Display date policy:
+    - prefer `first_publication_date`
+    - else fall back to `written_date`
+    The chosen field is stored as `work_date_derived.display_date_field`.
+    """
+    _ = core_settings.database_url
+
+    from ingest_service.metadata.work_date_deriver import (
+        best_candidate,
+        build_candidates_from_edition_source_metadata,
+        build_candidates_from_work_metadata_evidence_row,
+        derive_display_date,
+    )
+
+    run_id = uuid.uuid4()
+    started = datetime.utcnow()
+    run = WorkDateDerivationRun(
+        run_id=run_id,
+        pipeline_version="v0",
+        git_commit_hash=None,
+        strategy="derive_work_dates_v1",
+        params={"limit": limit, "only_missing": only_missing, "force": force, "dry_run": dry_run},
+        started_at=started,
+        finished_at=None,
+        status="started",
+        error_log=None,
+        works_scanned=0,
+        works_derived=0,
+        works_skipped=0,
+        works_failed=0,
+    )
+
+    scanned = 0
+    derived = 0
+    skipped = 0
+    failed = 0
+
+    with SessionLocal() as session:
+        session.add(run)
+        session.commit()
+
+        q = (
+            select(
+                Work.work_id,
+                Work.title,
+                Work.title_canonical,
+                Work.author_id,
+                Author.name_canonical,
+                Author.birth_year,
+                Author.death_year,
+            )
+            .select_from(Work)
+            .join(Author, Author.author_id == Work.author_id)
+            .order_by(Author.name_canonical, Work.title)
+        )
+        rows = session.execute(q.limit(limit)).all()
+
+        for row in rows:
+            scanned += 1
+            if progress_every > 0 and (scanned == 1 or scanned % progress_every == 0):
+                typer.echo(f"[derive-dates] scanned={scanned} derived={derived} skipped={skipped} failed={failed}")
+
+            work_id = row.work_id
+            title = row.title_canonical or row.title
+            author_name = row.name_canonical
+            birth_year = row.birth_year if isinstance(row.birth_year, int) else None
+            death_year = row.death_year if isinstance(row.death_year, int) else None
+
+            try:
+                with session.begin_nested():
+                    existing = session.get(WorkDateDerived, work_id)
+                    if existing is not None and not force:
+                        if only_missing:
+                            skipped += 1
+                            continue
+                        # If not only-missing, we still skip unless force.
+                        skipped += 1
+                        continue
+
+                    edition_rows = session.execute(
+                        select(Edition.edition_id, Edition.source_url, Edition.source_metadata).where(
+                            Edition.work_id == work_id
+                        )
+                    ).all()
+
+                    candidates_by_role: dict[str, list] = {}
+                    for ed in edition_rows:
+                        ed_id = str(ed.edition_id)
+                        ed_url = ed.source_url
+                        ed_meta = ed.source_metadata if isinstance(ed.source_metadata, dict) else None
+                        for c in build_candidates_from_edition_source_metadata(
+                            edition_id=ed_id, source_url=ed_url, source_metadata=ed_meta
+                        ):
+                            candidates_by_role.setdefault(c.role, []).append(c)
+
+                    evidence_rows = session.execute(
+                        select(
+                            WorkMetadataEvidence.source_name,
+                            WorkMetadataEvidence.score,
+                            WorkMetadataEvidence.extracted,
+                            WorkMetadataEvidence.raw_payload,
+                            WorkMetadataEvidence.source_locator,
+                        ).where(WorkMetadataEvidence.work_id == work_id)
+                    ).all()
+                    for ev in evidence_rows:
+                        src = ev.source_name
+                        score = ev.score
+                        extracted = ev.extracted if isinstance(ev.extracted, dict) else None
+                        raw_payload = ev.raw_payload if isinstance(ev.raw_payload, dict) else None
+                        locator = ev.source_locator
+                        for c in build_candidates_from_work_metadata_evidence_row(
+                            source_name=src,
+                            score=score,
+                            extracted=extracted,
+                            raw_payload=raw_payload,
+                            source_locator=locator,
+                        ):
+                            candidates_by_role.setdefault(c.role, []).append(c)
+
+                    def pack(role: str) -> dict | None:
+                        best = best_candidate(candidates_by_role.get(role, []))
+                        if best is None:
+                            return None
+                        return {
+                            "date": best.date,
+                            "confidence": best.confidence,
+                            "source": best.source_name,
+                            "source_locator": best.source_locator,
+                            "provenance": best.provenance,
+                            "notes": best.notes,
+                        }
+
+                    bundle: dict = {
+                        "first_publication_date": pack("first_publication_date"),
+                        "written_date": pack("written_date"),
+                        "edition_publication_date": pack("edition_publication_date"),
+                        "heuristic_publication_year": pack("heuristic_publication_year"),
+                    }
+
+                    # Attach quick plausibility flags (do not reject; just record).
+                    flags: dict[str, list[str]] = {"warnings": []}
+                    fp = bundle.get("first_publication_date")
+                    fp_year = None
+                    if isinstance(fp, dict):
+                        d = fp.get("date")
+                        if isinstance(d, dict) and isinstance(d.get("year"), int):
+                            fp_year = d["year"]
+                    if fp_year is not None and death_year is not None and fp_year > death_year + 5:
+                        flags["warnings"].append("first_publication_after_death")
+                    if fp_year is not None and birth_year is not None and fp_year < birth_year - 10:
+                        flags["warnings"].append("first_publication_before_birth")
+                    if flags["warnings"]:
+                        bundle["flags"] = flags
+
+                    display_date, display_field, display_year = derive_display_date(bundle=bundle)
+
+                    if dry_run:
+                        typer.echo(
+                            f'{author_name} — "{title[:70]}": '
+                            f'{(display_date or {}).get("year")} (display={display_field})'
+                        )
+                        derived += 1
+                        continue
+
+                    row_obj = existing or WorkDateDerived(work_id=work_id)
+                    row_obj.dates = bundle
+                    row_obj.display_date = display_date
+                    row_obj.display_date_field = display_field
+                    row_obj.display_year = display_year
+                    row_obj.derived_run_id = run_id
+                    row_obj.derived_at = datetime.utcnow()
+                    session.add(row_obj)
+                    derived += 1
+
+                if scanned % 500 == 0 and not dry_run:
+                    session.commit()
+            except Exception as exc:
+                session.rollback()
+                failed += 1
+                typer.echo(f"[derive-dates] ERROR work_id={work_id} title={title[:40]!r}: {exc}")
+
+        if not dry_run:
+            session.commit()
+
+        run = session.get(WorkDateDerivationRun, run_id)
+        if run is not None:
+            run.finished_at = datetime.utcnow()
+            run.status = "succeeded"
+            run.works_scanned = scanned
+            run.works_derived = derived
+            run.works_skipped = skipped
+            run.works_failed = failed
+            session.commit()
+
+    typer.echo("")
+    typer.echo("=" * 60)
+    typer.echo(f"Works scanned:  {scanned}")
+    if dry_run:
+        typer.echo(f"Works would derive: {derived}")
+    else:
+        typer.echo(f"Works derived:  {derived}")
+    typer.echo(f"Works skipped:  {skipped}")
+    typer.echo(f"Works failed:   {failed}")
 
 
 @app.command("finalize-first-publication-dates")

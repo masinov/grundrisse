@@ -18,6 +18,7 @@ from grundrisse_core.db.models import (
     SentenceSpan,
     SpanGroup,
     Work,
+    WorkDateDerived,
 )
 
 router = APIRouter()
@@ -52,6 +53,7 @@ class WorkSummary(BaseModel):
     title_canonical: str | None
     publication_year: int | None
     date_confidence: str | None
+    display_date_field: str | None
     language: str | None
     paragraph_count: int
     has_extractions: bool
@@ -71,6 +73,38 @@ class AuthorDetailResponse(BaseModel):
     works: list[WorkSummary]
 
     model_config = {"from_attributes": True}
+
+
+def _display_year_and_confidence(
+    *,
+    display_year: int | None,
+    display_date: dict | None,
+    display_date_field: str | None,
+    legacy_pub_date: dict | None,
+) -> tuple[int | None, str | None, str | None]:
+    if isinstance(display_year, int):
+        dd = display_date if isinstance(display_date, dict) else {}
+        source = str(dd.get("source") or "").strip().lower()
+        confidence = dd.get("confidence")
+        conf = float(confidence) if isinstance(confidence, (int, float)) else None
+        field = display_date_field if isinstance(display_date_field, str) else None
+        if source == "heuristic_url_year" or field == "heuristic_publication_year" or (
+            conf is not None and conf <= 0.3
+        ):
+            return display_year, "heuristic", field
+        return display_year, "evidence", field
+
+    if not isinstance(legacy_pub_date, dict):
+        return None, None, None
+    year = legacy_pub_date.get("year")
+    if not isinstance(year, int):
+        return None, None, None
+    method = str(legacy_pub_date.get("method") or "").strip().lower()
+    confidence = legacy_pub_date.get("confidence")
+    conf = float(confidence) if isinstance(confidence, (int, float)) else None
+    if method in {"heuristic_url_year", ""} and (conf is None or conf <= 0.3):
+        return year, "heuristic", None
+    return year, "evidence", None
 
 
 @router.get("", response_model=AuthorListResponse)
@@ -192,6 +226,9 @@ def get_author(db: DbSession, author_id: UUID) -> AuthorDetailResponse:
             Work.title,
             Work.title_canonical,
             Work.publication_date,
+            WorkDateDerived.display_year,
+            WorkDateDerived.display_date,
+            WorkDateDerived.display_date_field,
             func.coalesce(para_count_sq.c.language, Work.original_language).label("language"),
             func.coalesce(para_count_sq.c.paragraph_count, 0).label("paragraph_count"),
             (func.coalesce(concept_sq.c.concept_mentions, 0) + func.coalesce(claim_sq.c.claims, 0)).label(
@@ -199,6 +236,7 @@ def get_author(db: DbSession, author_id: UUID) -> AuthorDetailResponse:
             ),
         )
         .select_from(Work)
+        .outerjoin(WorkDateDerived, WorkDateDerived.work_id == Work.work_id)
         .outerjoin(para_count_sq, para_count_sq.c.work_id == Work.work_id)
         .outerjoin(concept_sq, concept_sq.c.work_id == Work.work_id)
         .outerjoin(claim_sq, claim_sq.c.work_id == Work.work_id)
@@ -209,14 +247,12 @@ def get_author(db: DbSession, author_id: UUID) -> AuthorDetailResponse:
     rows = db.execute(works_query).all()
     works: list[WorkSummary] = []
     for row in rows:
-        pub_date = row.publication_date if isinstance(row.publication_date, dict) else {}
-        year = pub_date.get("year") if isinstance(pub_date.get("year"), int) else None
-        conf = pub_date.get("confidence")
-        conf_f = float(conf) if isinstance(conf, (int, float)) else None
-        method = str(pub_date.get("method") or "").strip().lower()
-        date_confidence = None
-        if year is not None:
-            date_confidence = "heuristic" if method in {"", "heuristic_url_year"} and (conf_f is None or conf_f <= 0.3) else "evidence"
+        year, date_confidence, display_field = _display_year_and_confidence(
+            display_year=row.display_year,
+            display_date=row.display_date if isinstance(row.display_date, dict) else None,
+            display_date_field=row.display_date_field,
+            legacy_pub_date=row.publication_date if isinstance(row.publication_date, dict) else None,
+        )
 
         works.append(
             WorkSummary(
@@ -225,6 +261,7 @@ def get_author(db: DbSession, author_id: UUID) -> AuthorDetailResponse:
                 title_canonical=row.title_canonical,
                 publication_year=year,
                 date_confidence=date_confidence,
+                display_date_field=display_field,
                 language=row.language,
                 paragraph_count=row.paragraph_count or 0,
                 has_extractions=(row.extraction_signal or 0) > 0,

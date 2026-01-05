@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import func, select
 
 from api.deps import DbSession
-from grundrisse_core.db.models import Author, Edition, Paragraph, Work
+from grundrisse_core.db.models import Author, Edition, Paragraph, Work, WorkDateDerived
 
 router = APIRouter()
 
@@ -30,6 +30,7 @@ class WorkSearchResult(BaseModel):
     title: str
     author_name: str
     publication_year: int | None
+    display_date_field: str | None
 
     model_config = {"from_attributes": True}
 
@@ -88,10 +89,13 @@ def search(
                 Work.work_id,
                 Work.title,
                 Work.publication_date,
+                WorkDateDerived.display_year,
+                WorkDateDerived.display_date_field,
                 Author.name_canonical.label("author_name"),
             )
             .select_from(Work)
             .join(Author, Author.author_id == Work.author_id)
+            .outerjoin(WorkDateDerived, WorkDateDerived.work_id == Work.work_id)
             .where(Work.title.ilike(search_pattern))
             .order_by(Work.title)
             .limit(limit if type == "works" else limit // 2)
@@ -104,9 +108,12 @@ def search(
                 title=row.title,
                 author_name=row.author_name,
                 publication_year=(
-                    row.publication_date.get("year")
-                    if isinstance(row.publication_date, dict)
-                    else None
+                    row.display_year
+                    if isinstance(row.display_year, int)
+                    else (row.publication_date.get("year") if isinstance(row.publication_date, dict) else None)
+                ),
+                display_date_field=(
+                    row.display_date_field if isinstance(row.display_date_field, str) else None
                 ),
             )
             for row in work_rows

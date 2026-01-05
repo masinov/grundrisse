@@ -73,9 +73,9 @@ def extract_marxists_header_metadata(html: str) -> dict[str, Any] | None:
     return {
         "fields": fields,
         "dates": {
-            "written": _parse_dateish(fields.get("Written")),
-            "first_published": _parse_dateish(fields.get("First Published")),
-            "published": _parse_dateish(fields.get("Published")),
+            "written": parse_dateish(fields.get("Written")),
+            "first_published": parse_dateish(fields.get("First Published")),
+            "published": parse_dateish(fields.get("Published")),
         },
         "editorial_intro": editorial_intro or None,
         "extracted_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -163,7 +163,7 @@ _MONTH_DAY_YEAR_RE = re.compile(
 )
 
 
-def _parse_dateish(value: str | None) -> dict[str, Any] | None:
+def parse_dateish(value: str | None) -> dict[str, Any] | None:
     """
     Best-effort parse of a human-readable date string into {year, month, day, precision}.
     We keep this conservative: if we can't find a plausible year, return None.

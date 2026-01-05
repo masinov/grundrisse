@@ -55,7 +55,16 @@ export default async function WorkPage({ params, searchParams }: PageProps) {
           >
             {work.author.name_canonical}
           </Link>
-          {work.publication_year && <span>{work.publication_year}</span>}
+          {work.publication_year && (
+            <span className="inline-flex items-center gap-2">
+              <span>{work.publication_year}</span>
+              {work.display_date_field && (
+                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded">
+                  {work.display_date_field === 'written_date' ? 'written' : 'published'}
+                </span>
+              )}
+            </span>
+          )}
           {work.editions[0]?.language && (
             <span>{work.editions[0].language.toUpperCase()}</span>
           )}

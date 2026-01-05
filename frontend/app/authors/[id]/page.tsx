@@ -65,6 +65,11 @@ export default async function AuthorPage({ params }: PageProps) {
                         {work.publication_year}
                       </span>
                     )}
+                    {work.publication_year && work.display_date_field && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 rounded">
+                        {work.display_date_field === 'written_date' ? 'written' : 'published'}
+                      </span>
+                    )}
                     <span className="font-medium text-gray-900">{work.title}</span>
                     {work.has_extractions && (
                       <span className="inline-flex items-center px-1.5 py-0.5 text-xs font-medium bg-primary-50 text-primary-700 rounded">
