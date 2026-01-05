@@ -14,7 +14,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib directories (but not frontend/lib)
+/lib/
 lib64/
 parts/
 sdist/
@@ -140,6 +141,10 @@ celerybeat.pid
 .venv
 env/
 venv/
+.pytest_cache/
+
+# Runtime caches (metadata resolvers, crawler helpers)
+data/cache/
 ENV/
 env.bak/
 venv.bak/

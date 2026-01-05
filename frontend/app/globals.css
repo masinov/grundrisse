@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 23, 23, 23;
+  --background-rgb: 255, 255, 255;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+/* Typography for reading */
+.prose-reader {
+  @apply font-serif text-lg leading-relaxed;
+}
+
+.prose-reader p {
+  @apply mb-4;
+}
+
+/* Extraction badge */
+.extraction-badge {
+  @apply inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono
+         bg-gray-100 text-gray-600 rounded cursor-pointer
+         hover:bg-primary-100 hover:text-primary-700 transition-colors;
+}
+
+.extraction-badge.has-extractions {
+  @apply bg-primary-50 text-primary-600;
+}
+
+/* Link styles */
+a {
+  @apply text-primary-600 hover:text-primary-800 transition-colors;
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-shadow hover:shadow-md;
+}
