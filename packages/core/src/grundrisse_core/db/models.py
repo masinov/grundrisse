@@ -673,9 +673,11 @@ class EditionSourceHeader(Base):
     raw_dates: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     editorial_intro: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    written_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    first_published_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    published_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Important: use `none_as_null=True` so Python `None` becomes SQL NULL (not JSON `null`),
+    # which keeps DB-level nullability meaningful (e.g., `count(col)` reflects "has date").
+    written_date: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    first_published_date: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
+    published_date: Mapped[dict | None] = mapped_column(JSON(none_as_null=True), nullable=True)
 
     source_citation_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
     translated_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
