@@ -59,7 +59,12 @@ def marxists_line_has_edition_markers(line: str | None) -> bool:
 
 def derive_display_date(*, bundle: dict[str, Any]) -> tuple[dict[str, Any] | None, str, int | None]:
     """
-    Rule: display first_publication_date, else written_date.
+    Rule: display first_publication_date if available, else written_date.
+
+    If a year looks like an upload/transcription/public-domain timestamp, it should be
+    classified as `ingest_upload_year` during candidate construction so it won't become
+    `first_publication_date` in the bundle.
+
     Returns (display_date, display_date_field, display_year).
     """
     first_pub = bundle.get("first_publication_date")
@@ -186,6 +191,18 @@ def build_candidates_from_edition_source_metadata(
 
 _YEAR_RE = re.compile(r"^\d{4}$")
 
+_UPLOAD_MARKERS = (
+    "internet archive",
+    "marxists internet archive",
+    "transcription",
+    "markup",
+    "mark-up",
+    "proofread",
+    "public domain",
+    "copyleft",
+    "copyright",
+)
+
 
 def build_candidates_from_work_metadata_evidence_row(
     *,
@@ -248,6 +265,17 @@ def build_candidates_from_work_metadata_evidence_row(
                 notes = "edition_contamination"
                 # Keep it present for auditing, but reduce confidence so it won't accidentally dominate.
                 confidence = min(confidence, 0.55)
+            else:
+                header_field = raw_payload.get("header_field") if isinstance(raw_payload, dict) else None
+                header_value = (
+                    fields.get(header_field)
+                    if isinstance(header_field, str) and isinstance(fields.get(header_field), str)
+                    else None
+                )
+                if isinstance(header_value, str) and any(m in header_value.lower() for m in _UPLOAD_MARKERS):
+                    role = "ingest_upload_year"
+                    notes = "upload_or_transcription_year"
+                    confidence = min(confidence, 0.25)
 
     return [
         DateCandidate(
