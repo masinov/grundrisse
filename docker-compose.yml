@@ -4,6 +4,9 @@
 services:
   db:
     image: pgvector/pgvector:pg16
+    # Disabled by default because most development uses the separately managed Postgres
+    # stack under `ops/` (often already bound to host port 5432).
+    profiles: ["compose-db"]
     environment:
       POSTGRES_DB: grundrisse
       POSTGRES_USER: grundrisse
@@ -27,7 +30,7 @@ services:
       - "8000:8000"
     environment:
       # Use host.docker.internal to connect to host's postgres when running without db service
-      API_DATABASE_URL: ${API_DATABASE_URL:-postgresql://grundrisse:grundrisse@db:5432/grundrisse}
+      API_DATABASE_URL: ${API_DATABASE_URL:-postgresql://grundrisse:grundrisse@host.docker.internal:5432/grundrisse}
       API_CORS_ORIGINS: http://localhost:3000,http://frontend:3000
     # Only depend on db if it's being started
     depends_on:
