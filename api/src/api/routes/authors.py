@@ -6,10 +6,19 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 
 from api.deps import DbSession
-from grundrisse_core.db.models import Author, AuthorAlias, Edition, ExtractionRun, Paragraph, Work
+from grundrisse_core.db.models import (
+    Author,
+    AuthorAlias,
+    ClaimEvidence,
+    ConceptMention,
+    Edition,
+    Paragraph,
+    SentenceSpan,
+    SpanGroup,
+    Work,
+)
 
 router = APIRouter()
 
@@ -143,50 +152,82 @@ def get_author(db: DbSession, author_id: UUID) -> AuthorDetailResponse:
         select(AuthorAlias.name_variant).where(AuthorAlias.author_id == author_id)
     ).all()
 
-    # Get works with paragraph counts and extraction status
+    para_count_sq = (
+        select(
+            Edition.work_id.label("work_id"),
+            func.count(func.distinct(Paragraph.order_index)).label("paragraph_count"),
+            func.min(Edition.language).label("language"),
+        )
+        .select_from(Edition)
+        .outerjoin(Paragraph, Paragraph.edition_id == Edition.edition_id)
+        .group_by(Edition.work_id)
+        .subquery()
+    )
+    concept_sq = (
+        select(
+            Edition.work_id.label("work_id"),
+            func.count(func.distinct(ConceptMention.mention_id)).label("concept_mentions"),
+        )
+        .select_from(Edition)
+        .join(SentenceSpan, SentenceSpan.edition_id == Edition.edition_id)
+        .join(ConceptMention, ConceptMention.span_id == SentenceSpan.span_id)
+        .group_by(Edition.work_id)
+        .subquery()
+    )
+    claim_sq = (
+        select(
+            Edition.work_id.label("work_id"),
+            func.count(func.distinct(ClaimEvidence.claim_id)).label("claims"),
+        )
+        .select_from(Edition)
+        .join(SpanGroup, SpanGroup.edition_id == Edition.edition_id)
+        .join(ClaimEvidence, ClaimEvidence.group_id == SpanGroup.group_id)
+        .group_by(Edition.work_id)
+        .subquery()
+    )
+
     works_query = (
         select(
             Work.work_id,
             Work.title,
             Work.title_canonical,
             Work.publication_date,
-            Edition.edition_id,
-            Edition.language,
-            func.count(Paragraph.paragraph_id).label("paragraph_count"),
-            func.count(ExtractionRun.run_id).label("extraction_count"),
+            func.coalesce(para_count_sq.c.language, Work.original_language).label("language"),
+            func.coalesce(para_count_sq.c.paragraph_count, 0).label("paragraph_count"),
+            (func.coalesce(concept_sq.c.concept_mentions, 0) + func.coalesce(claim_sq.c.claims, 0)).label(
+                "extraction_signal"
+            ),
         )
         .select_from(Work)
-        .join(Edition, Edition.work_id == Work.work_id)
-        .outerjoin(Paragraph, Paragraph.edition_id == Edition.edition_id)
-        .outerjoin(ExtractionRun, ExtractionRun.edition_id == Edition.edition_id)
+        .outerjoin(para_count_sq, para_count_sq.c.work_id == Work.work_id)
+        .outerjoin(concept_sq, concept_sq.c.work_id == Work.work_id)
+        .outerjoin(claim_sq, claim_sq.c.work_id == Work.work_id)
         .where(Work.author_id == author_id)
-        .group_by(Work.work_id, Work.title, Work.title_canonical, Work.publication_date, Edition.edition_id, Edition.language)
-        .order_by(Work.publication_date["year"].astext.cast(db.bind.dialect.type_descriptor(type(0))).asc().nulls_last())
+        .order_by(Work.title)
     )
 
     rows = db.execute(works_query).all()
-
-    # Deduplicate works (take first edition per work)
-    seen_works = set()
-    works = []
+    works: list[WorkSummary] = []
     for row in rows:
-        if row.work_id in seen_works:
-            continue
-        seen_works.add(row.work_id)
-
         pub_date = row.publication_date if isinstance(row.publication_date, dict) else {}
+        year = pub_date.get("year") if isinstance(pub_date.get("year"), int) else None
+        conf = pub_date.get("confidence")
+        conf_f = float(conf) if isinstance(conf, (int, float)) else None
+        method = str(pub_date.get("method") or "").strip().lower()
+        date_confidence = None
+        if year is not None:
+            date_confidence = "heuristic" if method in {"", "heuristic_url_year"} and (conf_f is None or conf_f <= 0.3) else "evidence"
+
         works.append(
             WorkSummary(
                 work_id=row.work_id,
                 title=row.title,
                 title_canonical=row.title_canonical,
-                publication_year=pub_date.get("year"),
-                date_confidence=pub_date.get("confidence") if pub_date.get("confidence") else (
-                    "heuristic" if pub_date.get("year") else None
-                ),
+                publication_year=year,
+                date_confidence=date_confidence,
                 language=row.language,
                 paragraph_count=row.paragraph_count or 0,
-                has_extractions=row.extraction_count > 0,
+                has_extractions=(row.extraction_signal or 0) > 0,
             )
         )
 

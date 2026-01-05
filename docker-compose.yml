@@ -26,11 +26,16 @@ services:
     ports:
       - "8000:8000"
     environment:
-      API_DATABASE_URL: postgresql://grundrisse:grundrisse@db:5432/grundrisse
+      # Use host.docker.internal to connect to host's postgres when running without db service
+      API_DATABASE_URL: ${API_DATABASE_URL:-postgresql://grundrisse:grundrisse@db:5432/grundrisse}
       API_CORS_ORIGINS: http://localhost:3000,http://frontend:3000
+    # Only depend on db if it's being started
     depends_on:
       db:
         condition: service_healthy
+        required: false
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   frontend:
     build:
@@ -40,6 +45,7 @@ services:
       - "3000:3000"
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_URL_INTERNAL: http://api:8000
     depends_on:
       - api
 

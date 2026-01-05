@@ -12,13 +12,20 @@ import type {
   WorkParagraphsResponse,
 } from './types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// When running inside Docker, server-side requests must use the service DNS name (e.g. http://api:8000),
+// while browser requests should use a host-resolvable URL (e.g. http://localhost:8000).
+const INTERNAL_API_URL = process.env.API_URL_INTERNAL || process.env.INTERNAL_API_URL || 'http://api:8000';
+
+function getApiBaseUrl(): string {
+  return typeof window === 'undefined' ? INTERNAL_API_URL : PUBLIC_API_URL;
+}
 
 /**
  * Fetch wrapper with error handling.
  */
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
-  const url = `${API_URL}${path}`;
+  const url = `${getApiBaseUrl()}${path}`;
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -28,7 +35,13 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status} ${response.statusText}`);
+    let bodyText = '';
+    try {
+      bodyText = await response.text();
+    } catch {
+      bodyText = '';
+    }
+    throw new Error(`API error: ${response.status} ${response.statusText}${bodyText ? ` — ${bodyText}` : ''}`);
   }
 
   return response.json();

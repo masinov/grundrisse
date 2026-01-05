@@ -2,10 +2,19 @@
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import func, select, union
 
 from api.deps import DbSession
-from grundrisse_core.db.models import Author, Edition, ExtractionRun, Paragraph, Work
+from grundrisse_core.db.models import (
+    Author,
+    ClaimEvidence,
+    ConceptMention,
+    Edition,
+    Paragraph,
+    SentenceSpan,
+    SpanGroup,
+    Work,
+)
 
 router = APIRouter()
 
@@ -27,17 +36,23 @@ def get_stats(db: DbSession) -> StatsResponse:
     work_count = db.scalar(select(func.count()).select_from(Work)) or 0
     paragraph_count = db.scalar(select(func.count()).select_from(Paragraph)) or 0
 
-    # Count editions with extraction runs
-    editions_with_extractions = db.scalar(
-        select(func.count(func.distinct(ExtractionRun.edition_id))).select_from(ExtractionRun)
-    ) or 0
-
-    # Count works that have at least one edition with extractions
-    works_with_extractions = db.scalar(
-        select(func.count(func.distinct(Edition.work_id)))
+    works_with_concepts_sq = (
+        select(Edition.work_id.label("work_id"))
         .select_from(Edition)
-        .join(ExtractionRun, ExtractionRun.edition_id == Edition.edition_id)
-    ) or 0
+        .join(SentenceSpan, SentenceSpan.edition_id == Edition.edition_id)
+        .join(ConceptMention, ConceptMention.span_id == SentenceSpan.span_id)
+        .distinct()
+    )
+    works_with_claims_sq = (
+        select(Edition.work_id.label("work_id"))
+        .select_from(Edition)
+        .join(SpanGroup, SpanGroup.edition_id == Edition.edition_id)
+        .join(ClaimEvidence, ClaimEvidence.group_id == SpanGroup.group_id)
+        .distinct()
+    )
+    works_union = union(works_with_concepts_sq, works_with_claims_sq).subquery()
+
+    works_with_extractions = db.scalar(select(func.count(func.distinct(works_union.c.work_id)))) or 0
 
     coverage = (works_with_extractions / work_count * 100) if work_count > 0 else 0.0
 

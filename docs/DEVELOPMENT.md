@@ -134,3 +134,18 @@ This will:
 - snapshot each page to `data/raw/`
 - write a manifest `data/raw/ingest_run_<uuid>.json`
 - persist all paragraphs/sentence spans to a single `edition_id`
+
+## Work metadata utilities (publication dates)
+
+`Work.publication_date` is stored as JSON and may initially be missing or heuristically approximated.
+
+Two helper commands exist:
+
+- URL-based heuristic (fast, approximate): `grundrisse-ingest extract-publication-years --dry-run`
+  - Extracts a year from marxists.org URL paths like `/1848/` and writes `{"year": 1848}` to `work.publication_date`.
+- Online resolver (slower, auditable): `grundrisse-ingest resolve-publication-dates --dry-run`
+  - Uses a disk cache under `data/cache/publication_dates/`.
+  - Generates title variants and scores candidates to handle naming mismatches across sources.
+  - Records provenance evidence rows (`work_metadata_run` / `work_metadata_evidence`) for inspection.
+
+Note: `resolve-publication-dates` requires network access at runtime (Wikidata/OpenLibrary/marxists.org fetches).

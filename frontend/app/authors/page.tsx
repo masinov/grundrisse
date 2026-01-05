@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getAuthors } from '@/lib/api';
 import AuthorList from '@/components/authors/AuthorList';
+import AuthorSortSelect from '@/components/authors/AuthorSortSelect';
 
 export const revalidate = 60;
 
@@ -40,28 +41,7 @@ export default async function AuthorsPage({ searchParams }: PageProps) {
 
       {/* Filters */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Sort by:</label>
-          <select
-            defaultValue={`${sort}-${order}`}
-            onChange={(e) => {
-              const [newSort, newOrder] = e.target.value.split('-');
-              const url = new URL(window.location.href);
-              url.searchParams.set('sort', newSort);
-              url.searchParams.set('order', newOrder);
-              url.searchParams.delete('page');
-              window.location.href = url.toString();
-            }}
-            className="border border-gray-300 rounded px-2 py-1 text-sm"
-          >
-            <option value="works-desc">Most works</option>
-            <option value="works-asc">Fewest works</option>
-            <option value="name-asc">Name (A-Z)</option>
-            <option value="name-desc">Name (Z-A)</option>
-            <option value="birth_year-asc">Birth year (earliest)</option>
-            <option value="birth_year-desc">Birth year (latest)</option>
-          </select>
-        </div>
+        <AuthorSortSelect sort={sort} order={order} q={q} />
       </div>
 
       {error ? (

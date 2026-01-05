@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -15,12 +16,28 @@ from grundrisse_core.settings import settings as core_settings
 
 from grundrisse_core.db.session import SessionLocal
 from grundrisse_core.db.enums import BlockSubtype, TextBlockType, WorkType
-from grundrisse_core.db.models import Author, Edition, IngestRun, Paragraph, SentenceSpan, TextBlock, Work
+from grundrisse_core.db.models import (
+    Author,
+    AuthorAlias,
+    AuthorMetadataEvidence,
+    AuthorMetadataRun,
+    Edition,
+    IngestRun,
+    Paragraph,
+    SentenceSpan,
+    TextBlock,
+    Work,
+    WorkDateFinal,
+    WorkMetadataEvidence,
+    WorkMetadataRun,
+)
 from ingest_service.crawl.discover import discover_work_urls
 from ingest_service.fetch.snapshot import snapshot_url
 from ingest_service.parse.html_to_blocks import parse_html_to_blocks
+from ingest_service.parse.marxists_header_metadata import extract_marxists_header_metadata
 from ingest_service.segment.sentences import split_paragraph_into_sentences
 from ingest_service.settings import settings as ingest_settings
+from ingest_service.utils.title_canonicalization import canonicalize_title
 
 app = typer.Typer(help="Ingest service (snapshot, parse, segment).")
 
@@ -62,6 +79,7 @@ def ingest(
     url = _sanitize_url(url)
     snap = snapshot_url(url)
     html = snap.content.decode("utf-8", errors="replace")
+    header_meta = extract_marxists_header_metadata(html)
     parsed_blocks = parse_html_to_blocks(html)
 
     inferred_title = next((b.title for b in parsed_blocks if b.title), None)
@@ -100,11 +118,27 @@ def ingest(
                 translator_editor=None,
                 publication_year=None,
                 source_url=url,
+                source_metadata=_normalize_source_metadata(
+                    header_meta,
+                    source_url=url,
+                    raw_object_key=str(snap.raw_path),
+                    raw_sha256=snap.sha256,
+                ),
                 ingest_run_id=ingest_run.ingest_run_id,
             )
             session.add(edition)
         else:
             edition.ingest_run_id = ingest_run.ingest_run_id
+            if header_meta is not None:
+                edition.source_metadata = _merge_source_metadata(
+                    edition.source_metadata,
+                    _normalize_source_metadata(
+                        header_meta,
+                        source_url=url,
+                        raw_object_key=str(snap.raw_path),
+                        raw_sha256=snap.sha256,
+                    ),
+                )
 
         session.flush()
 
@@ -297,6 +331,16 @@ def ingest_work(
     raw_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = raw_dir / f"ingest_run_{ingest_run_id}.json"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+    # Best-effort: parse header metadata from the root snapshot (or first snapshot with metadata).
+    header_meta = None
+    try:
+        for page in manifest["snapshots"][:5]:
+            html = Path(page["raw_path"]).read_text(encoding="utf-8", errors="replace")
+            header_meta = extract_marxists_header_metadata(html)
+            if header_meta:
+                break
+    except Exception:
+        header_meta = None
 
     with SessionLocal() as session:
         _upsert_author(session, author_id=author_id, name_canonical=author)
@@ -325,11 +369,27 @@ def ingest_work(
                 translator_editor=None,
                 publication_year=None,
                 source_url=discovery.root_url,
+                source_metadata=_normalize_source_metadata(
+                    header_meta,
+                    source_url=discovery.root_url,
+                    raw_object_key=str(manifest_path),
+                    raw_sha256=sha256_text(manifest_path.read_text(encoding="utf-8")),
+                ),
                 ingest_run_id=ingest_run.ingest_run_id,
             )
             session.add(edition)
         else:
             edition.ingest_run_id = ingest_run.ingest_run_id
+            if header_meta is not None:
+                edition.source_metadata = _merge_source_metadata(
+                    edition.source_metadata,
+                    _normalize_source_metadata(
+                        header_meta,
+                        source_url=discovery.root_url,
+                        raw_object_key=str(manifest_path),
+                        raw_sha256=sha256_text(manifest_path.read_text(encoding="utf-8")),
+                    ),
+                )
 
         session.flush()
 
@@ -499,12 +559,286 @@ def _upsert_work(session, *, work_id: uuid.UUID, author_id: uuid.UUID, title: st
                 work_id=work_id,
                 author_id=author_id,
                 title=title,
+                title_canonical=canonicalize_title(title),
                 work_type=WorkType.other,
                 composition_date=None,
                 publication_date=None,
                 original_language=None,
                 source_urls=[],
             )
+        )
+    else:
+        if existing.title_canonical is None:
+            existing.title_canonical = canonicalize_title(existing.title)
+
+
+def _normalize_source_metadata(
+    header_meta: dict | None, *, source_url: str, raw_object_key: str, raw_sha256: str
+) -> dict | None:
+    if header_meta is None:
+        return None
+    meta = dict(header_meta)
+    meta.setdefault("source_url", source_url)
+    meta.setdefault("raw_object_key", raw_object_key)
+    meta.setdefault("raw_sha256", raw_sha256)
+    meta.setdefault("source", "marxists.org")
+    return meta
+
+
+def _merge_source_metadata(existing: dict | None, incoming: dict | None) -> dict | None:
+    """
+    Best-effort merge: keep existing values, fill in missing keys from incoming.
+    Intended to be idempotent and safe when re-ingesting.
+    """
+    if incoming is None:
+        return existing
+    if existing is None:
+        return incoming
+
+    merged = dict(existing)
+    for k, v in incoming.items():
+        if k not in merged or merged.get(k) in (None, "", [], {}):
+            merged[k] = v
+            continue
+
+        if k == "fields" and isinstance(merged.get(k), dict) and isinstance(v, dict):
+            fields = dict(merged[k])
+            for fk, fv in v.items():
+                if fk not in fields or fields.get(fk) in (None, ""):
+                    fields[fk] = fv
+            merged[k] = fields
+
+    return merged
+
+
+def _candidate_from_ingested_marxists_html(
+    *, raw_object_keys: list[str], max_pages: int, fallback_url: str | None = None
+):
+    """
+    Build a high-confidence publication-date candidate by parsing already-ingested marxists.org HTML.
+    This avoids network access and is typically much faster than HTTP-based resolvers.
+    """
+    from ingest_service.metadata.publication_date_resolver import PublicationDateCandidate
+
+    for raw_object_key in raw_object_keys:
+        for source_url, raw_sha256, html in _iter_html_from_raw_object_key(raw_object_key, max_pages=max_pages):
+            if not source_url and isinstance(fallback_url, str) and fallback_url:
+                source_url = fallback_url
+            meta = extract_marxists_header_metadata(html)
+            if not meta:
+                continue
+            fields = meta.get("fields") if isinstance(meta, dict) else None
+            dates = meta.get("dates") if isinstance(meta, dict) else None
+            if not isinstance(fields, dict) or not isinstance(dates, dict):
+                continue
+
+            first_published_raw = fields.get("First Published")
+            published_raw = fields.get("Published")
+            source_raw = fields.get("Source")
+
+            first_published = dates.get("first_published")
+            published = dates.get("published")
+
+            chosen: dict | None = None
+            chosen_field: str | None = None
+            chosen_raw: str | None = None
+            method = ""
+            score = 0.0
+
+            if isinstance(first_published, dict) and isinstance(first_published.get("year"), int):
+                chosen = first_published
+                chosen_field = "First Published"
+                chosen_raw = first_published_raw if isinstance(first_published_raw, str) else None
+                method = "marxists_header_first_published"
+                score = 0.95
+            elif isinstance(published, dict) and isinstance(published.get("year"), int):
+                # "Published" is ambiguous on marxists.org; accept only when it looks like a genuine first-publication
+                # reference (newspaper/journal/book first appearance), and reject Collected Works edition blurbs.
+                if _marxists_header_line_is_probably_first_publication(published_raw):
+                    chosen = published
+                    chosen_field = "Published"
+                    chosen_raw = published_raw if isinstance(published_raw, str) else None
+                    method = "marxists_header_published"
+                    score = 0.92
+            else:
+                # Many pages omit "First Published" / "Published" but include a detailed "Source" with issue/date.
+                # Use it cautiously at the threshold edge.
+                if _marxists_header_line_is_probably_first_publication(source_raw):
+                    from ingest_service.parse.marxists_header_metadata import _parse_dateish
+
+                    parsed = _parse_dateish(source_raw if isinstance(source_raw, str) else None)
+                    if isinstance(parsed, dict) and isinstance(parsed.get("year"), int):
+                        chosen = parsed
+                        chosen_field = "Source"
+                        chosen_raw = source_raw if isinstance(source_raw, str) else None
+                        method = "marxists_header_source"
+                        score = 0.90
+
+            if not chosen or not isinstance(chosen.get("year"), int):
+                continue
+
+            date = {
+                "year": chosen["year"],
+                "month": chosen.get("month"),
+                "day": chosen.get("day"),
+                "precision": chosen.get("precision") or "year",
+                "method": method,
+            }
+            raw_payload = {
+                "source": "marxists.org",
+                "mode": "ingested_html",
+                "source_url": source_url,
+                "raw_object_key": raw_object_key,
+                "raw_sha256": raw_sha256,
+                "header_field": chosen_field,
+                "header_value": chosen_raw,
+                "header": meta,
+            }
+            return PublicationDateCandidate(
+                date=date,
+                score=score,
+                source_name="marxists_ingested_html",
+                source_locator=source_url,
+                raw_payload=raw_payload,
+                notes="Parsed from ingested marxists.org header metadata (no HTTP).",
+            )
+
+    return None
+
+
+def _marxists_header_line_is_probably_first_publication(value: str | None) -> bool:
+    """
+    Decide whether a marxists.org header line ("Published", "Source") likely refers to first-publication,
+    rather than a later collected-works edition or an internet-archive statement.
+    """
+    if not value or not isinstance(value, str):
+        return False
+    v = value.strip()
+    if not v:
+        return False
+    lower = v.lower()
+
+    # Reject obvious non-publication info.
+    if "internet archive" in lower or "marxists internet archive" in lower:
+        return False
+    if "transcription" in lower or "markup" in lower or "mark-up" in lower or "proof" in lower:
+        return False
+    if "public domain" in lower or "copyleft" in lower or "creative commons" in lower:
+        return False
+
+    # Reject collected-works / anthology edition blurbs (these often contain misleading years).
+    collected_markers = [
+        "collected works",
+        "selected works",
+        "progress publishers",
+        "foreign languages publishing house",
+        "volume",
+        "vol.",
+        "english edition",
+        "mосква",
+        "moscow",
+    ]
+    if any(m in lower for m in collected_markers):
+        # Allow periodical sources even if they include "vol." etc; but "Collected Works" etc is a strong reject.
+        if "collected works" in lower or "selected works" in lower or "progress publishers" in lower:
+            return False
+
+    # Positive signals: periodicals / issue citations.
+    positive_markers = [
+        "no.",
+        "issue",
+        "whole no.",
+        "vol.",
+        "pp.",
+        "pravda",
+        "iskra",
+        "new international",
+        "new york",
+        "gazette",
+        "journal",
+        "newspaper",
+        "bulletin",
+        "review",
+    ]
+    if any(m in lower for m in positive_markers):
+        return True
+
+    # Otherwise: accept only if it contains a concrete date-ish pattern (month/day/year or year).
+    # This is conservative and keeps the min_score threshold meaningful.
+    return bool(re.search(r"(?<!\d)(1[5-9]\d{2}|20[0-3]\d)(?!\d)", lower))
+
+
+def _iter_html_from_raw_object_key(raw_object_key: str, *, max_pages: int) -> list[tuple[str, str, str]]:
+    """
+    Yield (source_url, raw_sha256, html_string) from an ingest_run raw_object_key.
+    raw_object_key may be:
+      - a single-page snapshot: `.../<sha256>.html`
+      - a manifest JSON for multi-page ingest: `.../ingest_run_<uuid>.json`
+    """
+    import json
+    from pathlib import Path
+
+    out: list[tuple[str, str, str]] = []
+    path = Path(raw_object_key)
+    if not path.exists():
+        return out
+
+    if path.suffix.lower() == ".html":
+        sha = path.stem
+        html = path.read_text(encoding="utf-8", errors="replace")
+        out.append(("", sha, html))
+        return out
+
+    if path.suffix.lower() == ".json":
+        try:
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return out
+        snapshots = manifest.get("snapshots")
+        if not isinstance(snapshots, list):
+            return out
+        for page in snapshots[: max(1, max_pages)]:
+            if not isinstance(page, dict):
+                continue
+            url = page.get("url") if isinstance(page.get("url"), str) else ""
+            raw_path = page.get("raw_path") if isinstance(page.get("raw_path"), str) else None
+            sha = page.get("sha256") if isinstance(page.get("sha256"), str) else None
+            if not raw_path:
+                continue
+            try:
+                html = Path(raw_path).read_text(encoding="utf-8", errors="replace")
+            except Exception:
+                continue
+            out.append((url, sha or "", html))
+        return out
+
+    return out
+
+
+def _persist_edition_source_metadata_from_candidate(session, *, edition_ids: list[uuid.UUID], candidate) -> None:
+    raw = getattr(candidate, "raw_payload", None)
+    if not isinstance(raw, dict):
+        return
+    header = raw.get("header")
+    if not isinstance(header, dict):
+        return
+    raw_object_key = raw.get("raw_object_key")
+    raw_sha256 = raw.get("raw_sha256")
+    if not isinstance(raw_object_key, str) or not isinstance(raw_sha256, str):
+        return
+
+    for edition_id in edition_ids:
+        edition = session.get(Edition, edition_id)
+        if edition is None:
+            continue
+        edition.source_metadata = _merge_source_metadata(
+            edition.source_metadata,
+            _normalize_source_metadata(
+                header,
+                source_url=edition.source_url,
+                raw_object_key=raw_object_key,
+                raw_sha256=raw_sha256,
+            ),
         )
 
 
@@ -1492,6 +1826,15 @@ def ingest_classified(
                 for page_idx, page in enumerate(manifest["snapshots"]):
                     url = page["url"]
                     html = Path(page["raw_path"]).read_text(encoding="utf-8", errors="replace")
+                    if edition.source_metadata is None and page_idx < 5:
+                        header_meta = extract_marxists_header_metadata(html)
+                        if header_meta is not None:
+                            edition.source_metadata = _normalize_source_metadata(
+                                header_meta,
+                                source_url=manifest["root_url"],
+                                raw_object_key=str(manifest_path),
+                                raw_sha256=sha256_text(manifest_path.read_text(encoding="utf-8")),
+                            )
                     parsed_blocks = parse_html_to_blocks(html)
 
                     for b in parsed_blocks:
@@ -1990,3 +2333,1332 @@ def author_apply_mappings(
             typer.echo("DRY RUN - No changes applied")
         else:
             typer.echo("✓ Mappings applied successfully!")
+
+
+@app.command("extract-publication-years")
+def extract_publication_years(
+    *,
+    dry_run: bool = typer.Option(False, help="Show proposed changes without applying"),
+    skip_if_finalized: bool = typer.Option(True, help="Skip works that already have a frozen first-publication date."),
+) -> None:
+    """
+    Extract publication years from text_block source URLs and populate work.publication_date.
+
+    Uses the year pattern /YYYY/ found in marxists.org URLs.
+    Takes the minimum year across all editions of a work as the publication year.
+    """
+    import re
+
+    year_pattern = re.compile(r"/(\d{4})/")
+
+    with SessionLocal() as session:
+        # Get all works with their text_block source URLs
+        result = session.execute(
+            select(
+                Work.work_id,
+                Work.title,
+                func.array_agg(TextBlock.source_url.distinct()).label("urls"),
+            )
+            .select_from(Work)
+            .join(Edition, Edition.work_id == Work.work_id)
+            .join(TextBlock, TextBlock.edition_id == Edition.edition_id)
+            .where(TextBlock.source_url.isnot(None))
+            .group_by(Work.work_id, Work.title)
+        )
+
+        updated = 0
+        skipped = 0
+        no_year = 0
+
+        for row in result:
+            work_id = row.work_id
+            title = row.title
+            urls = row.urls or []
+
+            # Extract all years from URLs
+            years = set()
+            for url in urls:
+                if url:
+                    match = year_pattern.search(url)
+                    if match:
+                        year = int(match.group(1))
+                        # Sanity check: year should be reasonable (1500-2030)
+                        if 1500 <= year <= 2030:
+                            years.add(year)
+
+            if not years:
+                no_year += 1
+                continue
+
+            # Use minimum year (earliest publication)
+            pub_year = min(years)
+
+            # Update work
+            work = session.get(Work, work_id)
+            if work:
+                if skip_if_finalized and session.get(WorkDateFinal, work_id) is not None:
+                    skipped += 1
+                    continue
+                current = work.publication_date
+                if current and current.get("year") == pub_year and current.get("method") == "heuristic_url_year":
+                    skipped += 1
+                    continue
+
+                if not dry_run:
+                    work.publication_date = {
+                        "year": pub_year,
+                        "precision": "year",
+                        "method": "heuristic_url_year",
+                        "confidence": 0.2,
+                    }
+
+                updated += 1
+                if updated <= 20:
+                    typer.echo(f"  {title[:50]}: {pub_year}")
+
+        if not dry_run:
+            session.commit()
+
+        typer.echo("")
+        typer.echo("=" * 60)
+        typer.echo(f"Works updated: {updated}")
+        typer.echo(f"Works skipped (already set): {skipped}")
+        typer.echo(f"Works without extractable year: {no_year}")
+
+        if dry_run:
+            typer.echo("\nDRY RUN - No changes applied")
+
+
+@app.command("resolve-publication-dates")
+def resolve_publication_dates(
+    *,
+    limit: int = typer.Option(200, help="Max works to process."),
+    title_contains: str | None = typer.Option(None, help="Only process works whose title contains this substring."),
+    author_contains: str | None = typer.Option(None, help="Only process works whose author contains this substring."),
+    work_id: str | None = typer.Option(None, help="Only process a specific work_id (UUID)."),
+    only_missing: bool = typer.Option(True, help="Only process works with no publication_date.year set."),
+    min_score: float = typer.Option(0.75, help="Minimum candidate score required to write publication_date."),
+    force: bool = typer.Option(False, help="Overwrite existing publication_date.year if set."),
+    upgrade_heuristic: bool = typer.Option(
+        False,
+        help="Process works whose publication_date.year is set but method is heuristic/unknown, and upgrade when confidence improves.",
+    ),
+    min_improvement: float = typer.Option(
+        0.10,
+        help="When upgrading an existing heuristic year, require at least this confidence improvement to overwrite (unless the year changes).",
+    ),
+    dry_run: bool = typer.Option(False, help="Show proposed updates without writing to DB."),
+    sources: str = typer.Option(
+        "marxists,wikidata,openlibrary",
+        help="Comma-separated sources: marxists,wikidata,openlibrary.",
+    ),
+    crawl_delay_s: float = typer.Option(0.6, help="Delay between HTTP requests (seconds)."),
+    max_cache_age_s: float = typer.Option(
+        7 * 24 * 3600, help="Max cache age (seconds) before refetching."
+    ),
+    prefer_ingested_html: bool = typer.Option(
+        True,
+        help="For marxists.org sources, prefer already-ingested snapshots in `data/raw/` via Edition.ingest_run.raw_object_key (no HTTP).",
+    ),
+    ingested_html_max_pages: int = typer.Option(
+        5, help="When reading a multi-page ingest manifest, scan up to N pages for a marxists header."
+    ),
+    persist_edition_source_metadata: bool = typer.Option(
+        False, help="Persist extracted marxists header fields into edition.source_metadata (writes to DB)."
+    ),
+    progress_every: int = typer.Option(25, help="Print progress every N scanned works (0 disables)."),
+) -> None:
+    """
+    Resolve Work publication dates using multiple online sources and store provenance evidence.
+
+    Notes:
+    - Requires network access at runtime for Wikidata/OpenLibrary/marxists.org HTML fetches.
+    - Uses a disk cache under `data/cache/publication_dates/` to avoid repeat lookups.
+    - Title mismatches are handled by generating title variants and scoring candidates.
+    """
+    import json
+    from pathlib import Path
+
+    from ingest_service.metadata.http_cached import CachedHttpClient
+    from ingest_service.metadata.publication_date_resolver import PublicationDateCandidate, PublicationDateResolver
+
+    _ = core_settings.database_url
+    source_list = [s.strip() for s in sources.split(",") if s.strip()]
+    cache_dir = Path(ingest_settings.data_dir) / "cache" / "publication_dates"
+
+    run_id = uuid.uuid4()
+    started = datetime.utcnow()
+    run = WorkMetadataRun(
+        run_id=run_id,
+        pipeline_version="v0",
+        git_commit_hash=None,
+        strategy="publication_date_resolver_v1",
+        params={
+            "limit": limit,
+            "only_missing": only_missing,
+            "min_score": min_score,
+            "force": force,
+            "dry_run": dry_run,
+            "crawl_delay_s": crawl_delay_s,
+            "max_cache_age_s": max_cache_age_s,
+        },
+        sources=source_list,
+        started_at=started,
+        finished_at=None,
+        status="started",
+        error_log=None,
+        works_scanned=0,
+        works_updated=0,
+        works_skipped=0,
+        works_failed=0,
+    )
+
+    with SessionLocal() as session, CachedHttpClient(
+        cache_dir=cache_dir,
+        user_agent=ingest_settings.user_agent,
+        timeout_s=ingest_settings.request_timeout_s,
+        delay_s=crawl_delay_s,
+        max_cache_age_s=max_cache_age_s,
+    ) as http:
+        session.add(run)
+        # Commit early so `work_metadata_run` is durable: per-work error handling does `session.rollback()`,
+        # and we never want that rollback to remove the run row (which evidence rows FK to).
+        session.commit()
+
+        # Pull candidate works with URLs for hinting.
+        q = (
+            select(
+                Work.work_id,
+                Work.title,
+                Work.author_id,
+                Author.name_canonical,
+                Author.birth_year,
+                Author.death_year,
+                func.array_agg(TextBlock.source_url.distinct()).label("block_urls"),
+                func.array_agg(Edition.source_url.distinct()).label("edition_urls"),
+                func.array_agg(Edition.language.distinct()).label("languages"),
+                func.array_agg(Edition.edition_id.distinct()).label("edition_ids"),
+                func.array_agg(IngestRun.raw_object_key.distinct()).label("raw_object_keys"),
+                func.array_agg(IngestRun.raw_checksum.distinct()).label("raw_checksums"),
+            )
+            .select_from(Work)
+            .join(Author, Author.author_id == Work.author_id)
+            .join(Edition, Edition.work_id == Work.work_id)
+            .join(IngestRun, IngestRun.ingest_run_id == Edition.ingest_run_id)
+            .join(TextBlock, TextBlock.edition_id == Edition.edition_id)
+            .where(TextBlock.source_url.isnot(None))
+            # Avoid grouping on JSON columns (publication_date) because Postgres JSON lacks equality.
+            .group_by(Work.work_id, Work.title, Work.author_id, Author.name_canonical, Author.birth_year, Author.death_year)
+        )
+        if title_contains:
+            q = q.where(Work.title.ilike(f"%{title_contains}%"))
+        if author_contains:
+            q = q.where(Author.name_canonical.ilike(f"%{author_contains}%"))
+        if work_id:
+            try:
+                w_uuid = uuid.UUID(work_id)
+            except Exception:
+                raise typer.BadParameter(f"Invalid work_id UUID: {work_id!r}")
+            q = q.where(Work.work_id == w_uuid)
+        rows = session.execute(q.limit(limit)).all()
+
+        work_ids = [r.work_id for r in rows]
+        work_by_id = {
+            w.work_id: w for w in session.scalars(select(Work).where(Work.work_id.in_(work_ids))).all()
+        }
+
+        resolver = PublicationDateResolver(http=http)
+
+        updated = 0
+        would_update = 0
+        skipped = 0
+        failed = 0
+        scanned = 0
+
+        for row in rows:
+            scanned += 1
+            if progress_every > 0 and (scanned == 1 or scanned % progress_every == 0):
+                if dry_run:
+                    typer.echo(
+                        f"[pubdates] scanned={scanned} would_update={would_update} skipped={skipped} failed={failed}"
+                    )
+                else:
+                    typer.echo(f"[pubdates] scanned={scanned} updated={updated} skipped={skipped} failed={failed}")
+            work_id = row.work_id
+            title = row.title
+            author_name = row.name_canonical
+            birth_year = row.birth_year
+            death_year = row.death_year
+            work_obj = work_by_id.get(work_id)
+            current_pub = (work_obj.publication_date if work_obj else None) or {}
+            current_year = current_pub.get("year") if isinstance(current_pub, dict) else None
+            current_conf = current_pub.get("confidence") if isinstance(current_pub, dict) else None
+            current_conf_f = float(current_conf) if isinstance(current_conf, (int, float)) else 0.0
+            current_method = current_pub.get("method") if isinstance(current_pub, dict) else None
+            current_method_norm = str(current_method or "").strip().lower()
+
+            if not force:
+                if upgrade_heuristic:
+                    # If a year exists, only consider upgrading when the current value is heuristic/unknown.
+                    if current_year is not None and current_method_norm not in {"", "heuristic_url_year"}:
+                        skipped += 1
+                        continue
+                    # Otherwise: allow processing (missing year OR heuristic year).
+                else:
+                    # Backwards-compatible behavior: without --force, only process works missing a year.
+                    if current_year is not None:
+                        skipped += 1
+                        continue
+                    if only_missing and current_year is not None:
+                        skipped += 1
+                        continue
+
+            urls = [u for u in (row.edition_urls or []) if u] + [u for u in (row.block_urls or []) if u]
+            languages = [l for l in (row.languages or []) if l]
+            language = languages[0] if languages else None
+
+            author_alias_rows = session.execute(
+                select(AuthorAlias.name_variant).where(AuthorAlias.author_id == row.author_id)
+            ).all()
+            author_aliases = [r[0] for r in author_alias_rows if isinstance(r[0], str)]
+
+            # Prefer canonical display title for matching if present, but do not change work identity.
+            display_title = title
+            if work_obj and work_obj.title_canonical:
+                display_title = work_obj.title_canonical
+
+            title_variants = PublicationDateResolver.title_variants(title=display_title, url_hints=urls[:8])
+            # Isolate per-work errors so transient HTTP failures don't abort long runs.
+            try:
+                with session.begin_nested():
+                    local_candidate: PublicationDateCandidate | None = None
+                    effective_sources = list(source_list)
+                    if prefer_ingested_html and "marxists" in set(source_list):
+                        local_candidate = _candidate_from_ingested_marxists_html(
+                            raw_object_keys=[k for k in (row.raw_object_keys or []) if isinstance(k, str) and k],
+                            max_pages=ingested_html_max_pages,
+                            fallback_url=(urls[0] if urls else None),
+                        )
+                        # When enabled, never perform HTTP fetches for marxists; use snapshots only.
+                        effective_sources = [s for s in effective_sources if s != "marxists"]
+
+                    candidates = resolver.resolve(
+                        author_name=author_name,
+                        author_aliases=author_aliases,
+                        author_birth_year=birth_year if isinstance(birth_year, int) else None,
+                        author_death_year=death_year if isinstance(death_year, int) else None,
+                        title=display_title,
+                        title_variants=title_variants,
+                        language=language,
+                        source_urls=urls[:8],
+                        sources=effective_sources,
+                        max_candidates=8,
+                    )
+                    if local_candidate is not None:
+                        candidates = [local_candidate, *candidates]
+
+                    if persist_edition_source_metadata and local_candidate is not None:
+                        _persist_edition_source_metadata_from_candidate(
+                            session,
+                            edition_ids=[eid for eid in (row.edition_ids or []) if isinstance(eid, uuid.UUID)],
+                            candidate=local_candidate,
+                        )
+
+                    # Persist evidence for audit, even if we don't write back.
+                    for cand in candidates[:8]:
+                        raw_sha = None
+                        if cand.raw_payload is not None:
+                            raw_sha = sha256_text(json.dumps(cand.raw_payload, sort_keys=True))
+                        session.add(
+                            WorkMetadataEvidence(
+                                evidence_id=uuid.uuid4(),
+                                run_id=run_id,
+                                work_id=work_id,
+                                source_name=cand.source_name,
+                                source_locator=cand.source_locator,
+                                retrieved_at=datetime.utcnow(),
+                                raw_payload=cand.raw_payload,
+                                raw_sha256=raw_sha,
+                                extracted=cand.date,
+                                score=cand.score,
+                                notes=cand.notes,
+                            )
+                        )
+
+                    def source_rank(source_name: str) -> int:
+                        s = str(source_name or "").strip().lower()
+                        if s in {"marxists", "marxists_ingested_html"}:
+                            return 0
+                        if s == "wikidata":
+                            return 1
+                        if s == "openlibrary":
+                            return 2
+                        if s == "heuristic_url_year":
+                            return 3
+                        return 9
+
+                    # Choose best candidate by source priority (marxists>wikidata>openlibrary), then score.
+                    best: tuple[float, object] | None = None
+                    for src_rank in (0, 1, 2, 3):
+                        best_in_src: tuple[float, object] | None = None
+                        for cand in candidates:
+                            if source_rank(cand.source_name) != src_rank:
+                                continue
+                            if cand.score < min_score:
+                                continue
+                            if best_in_src is None or cand.score > best_in_src[0]:
+                                best_in_src = (cand.score, cand)
+                        if best_in_src is not None:
+                            best = best_in_src
+                            break
+
+                    if best is None:
+                        skipped += 1
+                        continue
+
+                    if dry_run:
+                        cand = best[1]
+                        proposed_year = cand.date.get("year")
+                        should_write = True
+                        if not force and current_year is not None:
+                            # Upgrade path: only overwrite if better, or year differs.
+                            if proposed_year == current_year:
+                                should_write = best[0] >= current_conf_f + min_improvement
+                            else:
+                                should_write = True
+                        if should_write:
+                            typer.echo(
+                                f'{author_name} — "{display_title[:70]}": {proposed_year} '
+                                f'(score={best[0]:.2f}, source={cand.source_name}, method={cand.date.get("method")})'
+                            )
+                            would_update += 1
+                        else:
+                            skipped += 1
+                        continue
+
+                    work = session.get(Work, work_id)
+                    if work is None:
+                        skipped += 1
+                        continue
+                    cand = best[1]
+                    new_pub = dict(cand.date)
+                    new_pub["confidence"] = best[0]
+                    new_pub["sources"] = source_list
+                    proposed_year = new_pub.get("year")
+
+                    should_write = True
+                    if not force and current_year is not None:
+                        if proposed_year == current_year:
+                            should_write = best[0] >= current_conf_f + min_improvement
+                        else:
+                            should_write = True
+
+                    if not should_write:
+                        skipped += 1
+                        continue
+
+                    work.publication_date = new_pub
+                    updated += 1
+                    if updated <= 30 or (progress_every > 0 and updated % progress_every == 0):
+                        typer.echo(
+                            f'{author_name} — "{display_title[:70]}": {new_pub.get("year")} '
+                            f'(score={best[0]:.2f}, source={cand.source_name}, method={new_pub.get("method")})'
+                        )
+            except Exception as exc:
+                failed += 1
+                # Persist a minimal error evidence record for audit/debug; keep run resumable.
+                session.rollback()
+                if session.get(WorkMetadataRun, run_id) is not None:
+                    with session.begin_nested():
+                        session.add(
+                            WorkMetadataEvidence(
+                                evidence_id=uuid.uuid4(),
+                                run_id=run_id,
+                                work_id=work_id,
+                                source_name="resolver_error",
+                                source_locator=None,
+                                retrieved_at=datetime.utcnow(),
+                                raw_payload={"error": str(exc)},
+                                raw_sha256=sha256_text(str(exc)),
+                                extracted={"error": str(exc)},
+                                score=0.0,
+                                notes="resolver exception (continuing)",
+                            )
+                        )
+                typer.echo(f"[pubdates] ERROR work_id={work_id} title={title[:40]!r}: {exc}")
+
+            if scanned % 25 == 0:
+                session.commit()
+
+        session.commit()
+
+        run = session.get(WorkMetadataRun, run_id)
+        if run is not None:
+            run.finished_at = datetime.utcnow()
+            run.status = "succeeded"
+            run.works_scanned = scanned
+            run.works_updated = updated
+            run.works_skipped = skipped
+            run.works_failed = failed
+            # Keep the DB columns stable; store dry-run would-update count in params for audit.
+            if isinstance(run.params, dict):
+                run.params["dry_run_would_update"] = would_update
+            session.commit()
+
+        typer.echo("")
+        typer.echo("=" * 60)
+        typer.echo(f"Works scanned:  {scanned}")
+        if dry_run:
+            typer.echo(f"Works would update: {would_update}")
+        else:
+            typer.echo(f"Works updated:  {updated}")
+        typer.echo(f"Works skipped:  {skipped}")
+        typer.echo(f"Works failed:   {failed}")
+
+
+@app.command("extract-marxists-source-metadata")
+def extract_marxists_source_metadata(
+    *,
+    limit: int = typer.Option(2000, help="Max editions to scan."),
+    only_missing: bool = typer.Option(True, help="Only process editions with NULL edition.source_metadata."),
+    overwrite: bool = typer.Option(False, help="Overwrite existing edition.source_metadata."),
+    max_pages: int = typer.Option(5, help="When reading a manifest, scan up to N pages for a header."),
+    dry_run: bool = typer.Option(False, help="Show proposed updates without writing to DB."),
+    progress_every: int = typer.Option(200, help="Print progress every N scanned editions (0 disables)."),
+) -> None:
+    """
+    Backfill `edition.source_metadata` by parsing already-ingested marxists.org HTML snapshots in `data/raw/`.
+
+    This is designed to be safe and fast:
+    - No network calls.
+    - Reads raw HTML/manifest paths referenced by `ingest_run.raw_object_key`.
+    """
+    _ = core_settings.database_url
+
+    scanned = 0
+    updated = 0
+    skipped = 0
+    failed = 0
+
+    with SessionLocal() as session:
+        q = (
+            select(
+                Edition.edition_id,
+                Edition.source_url,
+                Edition.source_metadata,
+                IngestRun.raw_object_key,
+            )
+            .select_from(Edition)
+            .join(IngestRun, IngestRun.ingest_run_id == Edition.ingest_run_id)
+            .where(Edition.source_url.ilike("%marxists.org%"))
+        )
+        if only_missing and not overwrite:
+            q = q.where(Edition.source_metadata.is_(None))
+
+        rows = session.execute(q.limit(limit)).all()
+
+        for row in rows:
+            scanned += 1
+            if progress_every > 0 and (scanned == 1 or scanned % progress_every == 0):
+                typer.echo(
+                    f"[marxists-meta] scanned={scanned} updated={updated} skipped={skipped} failed={failed}"
+                )
+
+            edition_id = row.edition_id
+            source_url = row.source_url
+            raw_object_key = row.raw_object_key
+
+            try:
+                header_meta = None
+                chosen_sha = ""
+                for page_url, sha, html in _iter_html_from_raw_object_key(raw_object_key, max_pages=max_pages):
+                    header_meta = extract_marxists_header_metadata(html)
+                    if header_meta:
+                        chosen_sha = sha
+                        break
+
+                if not header_meta:
+                    skipped += 1
+                    continue
+
+                if dry_run:
+                    fields = header_meta.get("fields") if isinstance(header_meta, dict) else None
+                    first_pub = None
+                    if isinstance(fields, dict):
+                        first_pub = fields.get("First Published") or fields.get("Published")
+                    typer.echo(f"[marxists-meta] would_update edition_id={edition_id} url={source_url} first={first_pub!r}")
+                    updated += 1
+                    continue
+
+                edition = session.get(Edition, edition_id)
+                if edition is None:
+                    skipped += 1
+                    continue
+
+                if edition.source_metadata is not None and not overwrite:
+                    skipped += 1
+                    continue
+
+                edition.source_metadata = _merge_source_metadata(
+                    None if overwrite else edition.source_metadata,
+                    _normalize_source_metadata(
+                        header_meta,
+                        source_url=str(source_url),
+                        raw_object_key=str(raw_object_key),
+                        raw_sha256=str(chosen_sha),
+                    ),
+                )
+                updated += 1
+
+                if scanned % 200 == 0:
+                    session.commit()
+            except Exception:
+                session.rollback()
+                failed += 1
+
+        session.commit()
+
+    typer.echo("")
+    typer.echo("=" * 60)
+    typer.echo(f"Editions scanned:  {scanned}")
+    if dry_run:
+        typer.echo(f"Editions would update: {updated}")
+    else:
+        typer.echo(f"Editions updated:  {updated}")
+    typer.echo(f"Editions skipped:  {skipped}")
+    typer.echo(f"Editions failed:   {failed}")
+
+
+@app.command("finalize-first-publication-dates")
+def finalize_first_publication_dates(
+    *,
+    limit: int = typer.Option(2000, help="Max works to process."),
+    min_score: float = typer.Option(0.85, help="Minimum candidate score required to finalize."),
+    allow_heuristic: bool = typer.Option(
+        False, help="Allow finalization from heuristic URL year if no better evidence exists."
+    ),
+    force: bool = typer.Option(False, help="Overwrite existing frozen dates (not recommended)."),
+    dry_run: bool = typer.Option(False, help="Show proposed finalizations without writing."),
+    confirm: bool = typer.Option(False, help="Required for non-dry-run; acknowledges this writes to the DB."),
+    mirror_to_work: bool = typer.Option(
+        False,
+        help="Mirror finalized dates into work.publication_date (recommended only after validating WorkDateFinal output).",
+    ),
+    use_existing_evidence: bool = typer.Option(
+        True,
+        help="Finalize from existing work_metadata_evidence rows (fast, no network). Disable to refetch online sources.",
+    ),
+    crawl_delay_s: float = typer.Option(0.6, help="Delay between HTTP requests (seconds)."),
+    progress_every: int = typer.Option(200, help="Print progress every N scanned works (0 disables)."),
+    finalize_unknown: bool = typer.Option(
+        False,
+        help="Create WorkDateFinal rows with status=unknown when no evidence meets threshold (recommended for one-and-done runs).",
+    ),
+) -> None:
+    """
+    One-time finalizer for first-publication dates.
+
+    Design:
+    - Collect evidence candidates (marxists headers + verified catalog sources).
+    - Finalize ONLY when confidence is high.
+    - Persist results into `work_date_final`; optionally mirror into `work.publication_date` with method='final_first_publication'.
+    - Never touch finalized rows unless --force.
+    """
+    import json
+    from contextlib import nullcontext
+    from pathlib import Path
+
+    from ingest_service.metadata.http_cached import CachedHttpClient
+    from ingest_service.metadata.publication_date_resolver import PublicationDateCandidate, PublicationDateResolver
+
+    if not dry_run and not confirm:
+        raise typer.BadParameter("Refusing to write without --confirm (use --dry-run first to inspect outputs).")
+
+    _ = core_settings.database_url
+    cache_dir = Path(ingest_settings.data_dir) / "cache" / "publication_dates"
+    run_id = uuid.uuid4()
+    started = datetime.utcnow()
+
+    http_cm = (
+        CachedHttpClient(
+            cache_dir=cache_dir,
+            user_agent=ingest_settings.user_agent,
+            timeout_s=ingest_settings.request_timeout_s,
+            delay_s=crawl_delay_s,
+            max_cache_age_s=7 * 24 * 3600,
+        )
+        if not use_existing_evidence
+        else None
+    )
+
+    with SessionLocal() as session, (http_cm or nullcontext()) as http:
+        run = WorkMetadataRun(
+            run_id=run_id,
+            pipeline_version="v0",
+            git_commit_hash=None,
+            strategy="finalize_first_publication_v1",
+            params={
+                "limit": limit,
+                "min_score": min_score,
+                "allow_heuristic": allow_heuristic,
+                "force": force,
+                "dry_run": dry_run,
+                "mirror_to_work": mirror_to_work,
+                "use_existing_evidence": use_existing_evidence,
+            },
+            sources=["marxists", "wikidata", "openlibrary", "heuristic_url_year"],
+            started_at=started,
+            finished_at=None,
+            status="started",
+            error_log=None,
+            works_scanned=0,
+            works_updated=0,
+            works_skipped=0,
+            works_failed=0,
+        )
+        session.add(run)
+        session.flush()
+
+        resolver = PublicationDateResolver(http=http) if not use_existing_evidence else None
+
+        # Load works with URLs.
+        rows = session.execute(
+            select(
+                Work.work_id,
+                Work.title,
+                Work.author_id,
+                Author.name_canonical,
+                func.array_agg(Edition.source_url.distinct()).label("edition_urls"),
+                func.array_agg(TextBlock.source_url.distinct()).label("block_urls"),
+                func.array_agg(Edition.language.distinct()).label("languages"),
+            )
+            .select_from(Work)
+            .join(Author, Author.author_id == Work.author_id)
+            .join(Edition, Edition.work_id == Work.work_id)
+            .join(TextBlock, TextBlock.edition_id == Edition.edition_id)
+            .where(TextBlock.source_url.isnot(None))
+            .group_by(Work.work_id, Work.title, Work.author_id, Author.name_canonical)
+            .limit(limit)
+        ).all()
+
+        work_ids = [r.work_id for r in rows]
+        work_by_id = {w.work_id: w for w in session.scalars(select(Work).where(Work.work_id.in_(work_ids))).all()}
+
+        finalized_rows = 0
+        finalized_with_date = 0
+        finalized_unknown = 0
+        would_finalize_rows = 0
+        would_finalize_with_date = 0
+        would_finalize_unknown = 0
+        skipped = 0
+        skipped_existing_non_unknown = 0
+        skipped_no_candidate = 0
+        failed = 0
+        scanned = 0
+        allowed_marxists_types = {"first_published", "publication_date", "published"}
+
+        def derive_date_type(*, source_name: str, extracted: dict | None, notes: str | None) -> str | None:
+            if source_name != "marxists":
+                return None
+            if isinstance(extracted, dict):
+                dt = extracted.get("date_type")
+                if isinstance(dt, str) and dt:
+                    return dt
+            # Back-compat: older runs stored tag prefixes in notes like "first_published:...".
+            if isinstance(notes, str) and ":" in notes:
+                prefix = notes.split(":", 1)[0].strip()
+                if prefix:
+                    return prefix
+            return None
+
+        def best_candidate_from_existing_evidence(*, work_id: uuid.UUID) -> tuple[PublicationDateCandidate | None, uuid.UUID | None]:
+            ev_rows = session.execute(
+                select(
+                    WorkMetadataEvidence.evidence_id,
+                    WorkMetadataEvidence.source_name,
+                    WorkMetadataEvidence.source_locator,
+                    WorkMetadataEvidence.extracted,
+                    WorkMetadataEvidence.raw_payload,
+                    WorkMetadataEvidence.score,
+                    WorkMetadataEvidence.notes,
+                )
+                .where(WorkMetadataEvidence.work_id == work_id)
+                .where(WorkMetadataEvidence.score.isnot(None))
+                .order_by(WorkMetadataEvidence.score.desc())
+                .limit(30)
+            ).all()
+            candidates: list[tuple[int, PublicationDateCandidate, uuid.UUID]] = []
+            for ev in ev_rows:
+                extracted = ev.extracted if isinstance(ev.extracted, dict) else None
+                year = extracted.get("year") if extracted else None
+                if not isinstance(year, int) or not (1500 <= year <= 2030):
+                    continue
+                date_type = derive_date_type(source_name=ev.source_name, extracted=extracted, notes=ev.notes)
+                cand = PublicationDateCandidate(
+                    date=dict(extracted or {}),
+                    score=float(ev.score or 0.0),
+                    source_name=ev.source_name,
+                    source_locator=ev.source_locator,
+                    raw_payload=ev.raw_payload if isinstance(ev.raw_payload, dict) else None,
+                    notes=ev.notes,
+                )
+                # Apply finalization-time constraints for marxists candidates.
+                if cand.source_name == "marxists":
+                    if date_type not in allowed_marxists_types:
+                        continue
+                    cand.date["date_type"] = date_type
+                candidates.append((source_rank(cand), cand, ev.evidence_id))
+
+            if not candidates:
+                return None, None
+
+            # Prefer marxists > wikidata > openlibrary > heuristic; then by score.
+            candidates.sort(key=lambda t: (t[0], -t[1].score))
+            for _, cand, ev_id in candidates:
+                if cand.source_name == "heuristic_url_year" and not allow_heuristic:
+                    continue
+                if cand.score >= min_score:
+                    return cand, ev_id
+            return None, None
+
+        def source_rank(c: PublicationDateCandidate) -> int:
+            if c.source_name in {"marxists", "marxists_ingested_html"}:
+                return 0
+            if c.source_name == "wikidata":
+                return 1
+            if c.source_name == "openlibrary":
+                return 2
+            if c.source_name == "heuristic_url_year":
+                return 3
+            return 9
+
+        for row in rows:
+            scanned += 1
+            if progress_every > 0 and (scanned == 1 or scanned % progress_every == 0):
+                typer.echo(
+                    f"[finalize] scanned={scanned} finalized={finalized_with_date} unknown={finalized_unknown} "
+                    f"skipped={skipped} failed={failed}"
+                )
+
+            work_id = row.work_id
+            title = row.title
+            author_name = row.name_canonical
+            work_obj = work_by_id.get(work_id)
+
+            # Isolate per-work errors so a single bad page/evidence flush doesn't abort the full run.
+            try:
+                with session.begin_nested():
+                    existing_final = session.get(WorkDateFinal, work_id)
+                    if existing_final is not None and not force:
+                        # Allow upgrading placeholder unknown rows without requiring --force.
+                        status_norm = str(getattr(existing_final, "status", "") or "").strip().lower()
+                        if status_norm not in {"unknown", "heuristic"}:
+                            skipped += 1
+                            skipped_existing_non_unknown += 1
+                            continue
+                        # Continue processing so we can replace unknown with a finalized/heuristic date if possible.
+
+                    urls = [u for u in (row.edition_urls or []) if u] + [u for u in (row.block_urls or []) if u]
+                    language = (row.languages or [None])[0]
+
+                    display_title = work_obj.title_canonical if (work_obj and work_obj.title_canonical) else title
+                    best: PublicationDateCandidate | None = None
+                    best_evidence_id: uuid.UUID | None = None
+
+                    if use_existing_evidence:
+                        best, best_evidence_id = best_candidate_from_existing_evidence(work_id=work_id)
+                        # Optional fallback: use already-populated heuristic URL-year as a low-confidence "done" value.
+                        if best is None and allow_heuristic and work_obj and isinstance(work_obj.publication_date, dict):
+                            h_year = work_obj.publication_date.get("year")
+                            h_method = work_obj.publication_date.get("method")
+                            # Some historical runs stored the URL-derived year without a method marker; treat these as
+                            # heuristic if we don't have better evidence.
+                            method_norm = str(h_method or "").strip().lower()
+                            if isinstance(h_year, int) and 1500 <= h_year <= 2030 and method_norm in {"", "heuristic_url_year"}:
+                                best = PublicationDateCandidate(
+                                    date={
+                                        "year": h_year,
+                                        "precision": "year",
+                                        "method": "heuristic_url_year",
+                                        "retrieved_at": datetime.utcnow().isoformat(),
+                                    },
+                                    score=0.20,
+                                    source_name="heuristic_url_year",
+                                    source_locator=None,
+                                    raw_payload={"year": h_year, "method": h_method},
+                                    notes="Fallback from existing work.publication_date (heuristic_url_year).",
+                                )
+                                best_evidence_id = None
+                    else:
+                        if resolver is None:
+                            raise RuntimeError("Internal error: resolver not initialized.")
+
+                        # Evidence candidates from resolver.
+                        author_alias_rows = session.execute(
+                            select(AuthorAlias.name_variant).where(AuthorAlias.author_id == row.author_id)
+                        ).all()
+                        author_aliases = [r[0] for r in author_alias_rows if isinstance(r[0], str)]
+
+                        title_variants = PublicationDateResolver.title_variants(title=display_title, url_hints=urls[:8])
+
+                        candidates = resolver.resolve(
+                            author_name=author_name,
+                            author_aliases=author_aliases,
+                            title=display_title,
+                            title_variants=title_variants,
+                            language=language,
+                            source_urls=urls[:8],
+                            sources=["marxists", "wikidata", "openlibrary"],
+                            max_candidates=8,
+                        )
+
+                        # Add heuristic candidate from existing year (usually URL-derived) as evidence only.
+                        heuristic_year = None
+                        if work_obj and isinstance(work_obj.publication_date, dict):
+                            heuristic_year = work_obj.publication_date.get("year")
+                        if isinstance(heuristic_year, int) and 1500 <= heuristic_year <= 2030:
+                            candidates.append(
+                                PublicationDateCandidate(
+                                    date={
+                                        "year": heuristic_year,
+                                        "precision": "year",
+                                        "method": "heuristic_url_year",
+                                        "retrieved_at": datetime.utcnow().isoformat(),
+                                    },
+                                    score=0.20,
+                                    source_name="heuristic_url_year",
+                                    source_locator=None,
+                                    raw_payload={"year": heuristic_year},
+                                    notes="Existing work.publication_date.year without provenance (treated as heuristic).",
+                                )
+                            )
+
+                        # Persist evidence rows for this run.
+                        evidence_for_cand: dict[int, uuid.UUID] = {}
+                        for cand in candidates[:8]:
+                            raw_sha = None
+                            if cand.raw_payload is not None:
+                                raw_sha = sha256_text(json.dumps(cand.raw_payload, sort_keys=True))
+                            ev_id = uuid.uuid4()
+                            evidence_for_cand[id(cand)] = ev_id
+                            session.add(
+                                WorkMetadataEvidence(
+                                    evidence_id=ev_id,
+                                    run_id=run_id,
+                                    work_id=work_id,
+                                    source_name=cand.source_name,
+                                    source_locator=cand.source_locator,
+                                    retrieved_at=datetime.utcnow(),
+                                    raw_payload=cand.raw_payload,
+                                    raw_sha256=raw_sha,
+                                    extracted=cand.date,
+                                    score=cand.score,
+                                    notes=cand.notes,
+                                )
+                            )
+
+                        session.flush()
+
+                        # Pick best from the candidates we just created.
+                        for cand in candidates:
+                            if (
+                                cand.source_name == "marxists"
+                                and cand.score >= min_score
+                                and cand.date.get("date_type") in allowed_marxists_types
+                            ):
+                                best = cand
+                                best_evidence_id = evidence_for_cand.get(id(cand))
+                                break
+                        if best is None:
+                            for cand in candidates:
+                                if cand.source_name == "wikidata" and cand.score >= min_score:
+                                    best = cand
+                                    best_evidence_id = evidence_for_cand.get(id(cand))
+                                    break
+                        if best is None:
+                            for cand in candidates:
+                                if cand.source_name == "openlibrary" and cand.score >= min_score:
+                                    best = cand
+                                    best_evidence_id = evidence_for_cand.get(id(cand))
+                                    break
+                        if best is None and allow_heuristic:
+                            for cand in candidates:
+                                if cand.source_name == "heuristic_url_year":
+                                    best = cand
+                                    best_evidence_id = evidence_for_cand.get(id(cand))
+                                    break
+
+                    if best is None and not finalize_unknown:
+                        skipped += 1
+                        skipped_no_candidate += 1
+                        continue
+
+                    if dry_run:
+                        if best is not None:
+                            typer.echo(
+                                f'{author_name} — "{display_title[:70]}": {best.date.get("year")} '
+                                f'(score={best.score:.2f}, source={best.source_name}, type={best.date.get("date_type")})'
+                            )
+                            would_finalize_rows += 1
+                            would_finalize_with_date += 1
+                        elif finalize_unknown:
+                            would_finalize_rows += 1
+                            would_finalize_unknown += 1
+                        else:
+                            skipped_no_candidate += 1
+                        continue
+
+                    # Write frozen row (and optionally mirror to work.publication_date).
+                    final_row = existing_final or WorkDateFinal(work_id=work_id)
+                    if best is None:
+                        final_row.first_publication_date = None
+                        final_row.precision = None
+                        final_row.method = None
+                        final_row.confidence = None
+                        final_row.final_evidence_id = None
+                        final_row.status = "unknown"
+                        final_row.notes = "No evidence met threshold for first-publication date."
+                        finalized_unknown += 1
+                    else:
+                        final_row.first_publication_date = {
+                            "year": best.date.get("year"),
+                            "month": best.date.get("month"),
+                            "day": best.date.get("day"),
+                        }
+                        final_row.precision = best.date.get("precision") or "year"
+                        final_row.method = best.date.get("method")
+                        final_row.confidence = best.score
+                        final_row.final_evidence_id = best_evidence_id
+                        final_row.status = "finalized" if best.source_name != "heuristic_url_year" else "heuristic"
+                        finalized_with_date += 1
+                    final_row.finalized_run_id = run_id
+                    final_row.finalized_at = datetime.utcnow()
+                    session.add(final_row)
+
+                    if mirror_to_work and work_obj is not None and best is not None:
+                        work_obj.publication_date = {
+                            "year": best.date.get("year"),
+                            "precision": best.date.get("precision") or "year",
+                            "method": "final_first_publication",
+                            "confidence": best.score,
+                            "finalized_run_id": str(run_id),
+                            "final_evidence_id": str(best_evidence_id) if best_evidence_id else None,
+                        }
+
+                    finalized_rows += 1
+                    if best is not None and (
+                        finalized_with_date <= 30 or (progress_every > 0 and finalized_with_date % progress_every == 0)
+                    ):
+                        typer.echo(
+                            f'[finalize] {author_name} — "{display_title[:70]}" → {best.date.get("year")} '
+                            f"(source={best.source_name}, score={best.score:.2f})"
+                        )
+            except Exception as exc:
+                failed += 1
+                session.rollback()
+                typer.echo(f"[finalize] ERROR work_id={work_id} title={title[:40]!r}: {exc}")
+
+            if scanned % 100 == 0:
+                session.commit()
+
+        run.finished_at = datetime.utcnow()
+        run.status = "succeeded"
+        run.works_scanned = scanned
+        run.works_updated = finalized_rows
+        run.works_skipped = skipped
+        run.works_failed = failed
+        if isinstance(run.params, dict):
+            run.params["finalized_with_date"] = finalized_with_date
+            run.params["finalized_unknown"] = finalized_unknown
+        session.commit()
+
+        typer.echo("")
+        typer.echo("=" * 60)
+        typer.echo(f"Works scanned: {scanned}")
+        if dry_run:
+            typer.echo(f"Works would finalize (any): {would_finalize_rows}")
+            typer.echo(f"Works would finalize (with date): {would_finalize_with_date}")
+            typer.echo(f"Works would finalize (unknown): {would_finalize_unknown}")
+        else:
+            typer.echo(f"Works finalized (any): {finalized_rows}")
+            typer.echo(f"Works finalized (with date): {finalized_with_date}")
+            typer.echo(f"Works finalized (unknown): {finalized_unknown}")
+        typer.echo(f"Works skipped: {skipped}")
+        typer.echo(f"  skipped_existing_non_unknown: {skipped_existing_non_unknown}")
+        typer.echo(f"  skipped_no_candidate: {skipped_no_candidate}")
+        typer.echo(f"Works failed:  {failed}")
+
+@app.command("resolve-author-lifespans")
+def resolve_author_lifespans(
+    *,
+    limit: int = typer.Option(500, help="Max authors to process."),
+    name_contains: str | None = typer.Option(None, help="Only process authors whose canonical name contains this substring."),
+    author_id: str | None = typer.Option(None, help="Only process a specific author_id (UUID)."),
+    only_missing: bool = typer.Option(True, help="Only process authors missing birth_year or death_year."),
+    min_score: float = typer.Option(0.85, help="Minimum candidate score required to write years."),
+    force: bool = typer.Option(False, help="Overwrite existing birth/death years if set."),
+    dry_run: bool = typer.Option(False, help="Show proposed updates without writing to DB."),
+    sources: str = typer.Option("wikidata", help="Comma-separated sources (currently: wikidata)."),
+    crawl_delay_s: float = typer.Option(0.6, help="Delay between HTTP requests (seconds)."),
+    max_cache_age_s: float = typer.Option(30 * 24 * 3600, help="Max cache age (seconds) before refetching."),
+    progress_every: int = typer.Option(25, help="Print progress every N scanned authors (0 disables)."),
+    max_year_conflict: int = typer.Option(
+        25,
+        help="If an existing year differs from the candidate by more than this, treat as a conflict and skip (unless --force).",
+    ),
+) -> None:
+    """
+    Resolve author birth/death years (lifespan) from online sources.
+
+    This is used to improve plausibility checks for work publication-date resolution.
+    """
+    import json
+    from pathlib import Path
+
+    from ingest_service.metadata.author_lifespan_resolver import AuthorLifespanResolver
+    from ingest_service.metadata.http_cached import CachedHttpClient
+
+    _ = core_settings.database_url
+    source_list = [s.strip() for s in sources.split(",") if s.strip()]
+    cache_dir = Path(ingest_settings.data_dir) / "cache" / "author_lifespans"
+
+    run_id = uuid.uuid4()
+    started = datetime.utcnow()
+    run = AuthorMetadataRun(
+        run_id=run_id,
+        pipeline_version="v0",
+        git_commit_hash=None,
+        strategy="author_lifespan_resolver_v1",
+        params={
+            "limit": limit,
+            "only_missing": only_missing,
+            "min_score": min_score,
+            "force": force,
+            "dry_run": dry_run,
+            "crawl_delay_s": crawl_delay_s,
+            "max_cache_age_s": max_cache_age_s,
+        },
+        sources=source_list,
+        started_at=started,
+        finished_at=None,
+        status="started",
+        error_log=None,
+        authors_scanned=0,
+        authors_updated=0,
+        authors_skipped=0,
+        authors_failed=0,
+    )
+
+    with SessionLocal() as session, CachedHttpClient(
+        cache_dir=cache_dir,
+        user_agent=ingest_settings.user_agent,
+        timeout_s=ingest_settings.request_timeout_s,
+        delay_s=crawl_delay_s,
+        max_cache_age_s=max_cache_age_s,
+    ) as http:
+        session.add(run)
+        session.flush()
+
+        q = select(Author.author_id, Author.name_canonical, Author.birth_year, Author.death_year)
+        if author_id:
+            try:
+                author_uuid = uuid.UUID(author_id)
+            except Exception:
+                raise typer.BadParameter(f"Invalid author_id UUID: {author_id!r}")
+            q = q.where(Author.author_id == author_uuid)
+        if name_contains:
+            q = q.where(Author.name_canonical.ilike(f"%{name_contains}%"))
+        authors = session.execute(q.limit(limit)).all()
+
+        resolver = AuthorLifespanResolver(http=http)
+        updated = 0
+        would_update = 0
+        skipped = 0
+        failed = 0
+        scanned = 0
+
+        for row in authors:
+            scanned += 1
+            if progress_every > 0 and (scanned == 1 or scanned % progress_every == 0):
+                typer.echo(f"[lifespans] scanned={scanned} updated={updated} skipped={skipped} failed={failed}")
+            author_id = row.author_id
+            name = row.name_canonical
+            birth_year = row.birth_year
+            death_year = row.death_year
+
+            if only_missing and birth_year is not None and death_year is not None and not force:
+                skipped += 1
+                continue
+            if not force and (birth_year is not None or death_year is not None) and not only_missing:
+                skipped += 1
+                continue
+
+            alias_rows = session.execute(
+                select(AuthorAlias.name_variant).where(AuthorAlias.author_id == author_id)
+            ).all()
+            aliases = [r[0] for r in alias_rows if isinstance(r[0], str)]
+
+            candidates = resolver.resolve(
+                author_name=name,
+                author_aliases=aliases,
+                sources=source_list,
+                max_candidates=6,
+            )
+
+            for cand in candidates[:6]:
+                raw_sha = None
+                if cand.raw_payload is not None:
+                    raw_sha = sha256_text(json.dumps(cand.raw_payload, sort_keys=True))
+                session.add(
+                    AuthorMetadataEvidence(
+                        evidence_id=uuid.uuid4(),
+                        run_id=run_id,
+                        author_id=author_id,
+                        source_name=cand.source_name,
+                        source_locator=cand.source_locator,
+                        retrieved_at=datetime.utcnow(),
+                        raw_payload=cand.raw_payload,
+                        raw_sha256=raw_sha,
+                        extracted={
+                            "birth_year": cand.birth_year,
+                            "death_year": cand.death_year,
+                            "retrieved_at": datetime.utcnow().isoformat(),
+                            "method": "wikidata_p569_p570",
+                        },
+                        score=cand.score,
+                        notes=cand.notes,
+                    )
+                )
+
+            best = candidates[0] if candidates else None
+            if best is None or best.score < min_score:
+                skipped += 1
+                continue
+
+            # If we already have years and the candidate conflicts strongly, do not overwrite implicitly.
+            if not force:
+                if birth_year is not None and best.birth_year is not None:
+                    if abs(int(birth_year) - int(best.birth_year)) > max_year_conflict:
+                        skipped += 1
+                        continue
+                if death_year is not None and best.death_year is not None:
+                    if abs(int(death_year) - int(best.death_year)) > max_year_conflict:
+                        skipped += 1
+                        continue
+
+            if dry_run:
+                typer.echo(f"{name}: {best.birth_year}-{best.death_year} (score={best.score:.2f})")
+                would_update += 1
+                continue
+
+            try:
+                a = session.get(Author, author_id)
+                if a is None:
+                    skipped += 1
+                    continue
+                changed = False
+                if force or a.birth_year is None:
+                    if best.birth_year is not None and a.birth_year != best.birth_year:
+                        a.birth_year = best.birth_year
+                        changed = True
+                if force or a.death_year is None:
+                    if best.death_year is not None and a.death_year != best.death_year:
+                        a.death_year = best.death_year
+                        changed = True
+                if changed:
+                    updated += 1
+                else:
+                    skipped += 1
+                if updated <= 30 or (progress_every > 0 and updated % progress_every == 0):
+                    typer.echo(f"{name}: {best.birth_year}-{best.death_year} (score={best.score:.2f})")
+            except Exception as exc:
+                failed += 1
+                typer.echo(f"ERROR author_id={author_id}: {exc}")
+
+            if scanned % 25 == 0:
+                session.commit()
+
+        session.commit()
+
+        run = session.get(AuthorMetadataRun, run_id)
+        if run is not None:
+            run.finished_at = datetime.utcnow()
+            run.status = "succeeded"
+            run.authors_scanned = scanned
+            run.authors_updated = updated
+            run.authors_skipped = skipped
+            run.authors_failed = failed
+            if isinstance(run.params, dict):
+                run.params["dry_run_would_update"] = would_update
+            session.commit()
+
+        typer.echo("")
+        typer.echo("=" * 60)
+        typer.echo(f"Authors scanned:  {scanned}")
+        if dry_run:
+            typer.echo(f"Authors would update: {would_update}")
+        else:
+            typer.echo(f"Authors updated:  {updated}")
+        typer.echo(f"Authors skipped:  {skipped}")
+        typer.echo(f"Authors failed:   {failed}")
+
+
+@app.command("canonicalize-work-titles")
+def canonicalize_work_titles(
+    *,
+    limit: int = typer.Option(5000, help="Max works to scan."),
+    only_missing: bool = typer.Option(True, help="Only fill title_canonical when it is NULL."),
+    dry_run: bool = typer.Option(False, help="Show proposed changes without writing."),
+    progress_every: int = typer.Option(500, help="Print progress every N scanned works (0 disables)."),
+) -> None:
+    """
+    Populate `work.title_canonical` for display/search without changing Work identity.
+
+    This is safe because work_id generation uses `work.title` (raw).
+    """
+    _ = core_settings.database_url
+    with SessionLocal() as session:
+        rows = session.execute(select(Work).limit(limit)).scalars().all()
+        scanned = 0
+        filled = 0
+        changed = 0
+        skipped = 0
+        for w in rows:
+            scanned += 1
+            if progress_every > 0 and (scanned == 1 or scanned % progress_every == 0):
+                typer.echo(f"[titles] scanned={scanned} filled={filled} changed={changed} skipped={skipped}")
+
+            if only_missing and w.title_canonical is not None:
+                skipped += 1
+                continue
+            was_missing = w.title_canonical is None
+            canon = canonicalize_title(w.title)
+            if canon == (w.title_canonical or ""):
+                skipped += 1
+                continue
+            if dry_run:
+                typer.echo(f"{w.title[:60]} -> {canon[:60]}")
+                if was_missing:
+                    filled += 1
+                else:
+                    changed += 1
+                continue
+            w.title_canonical = canon
+            if was_missing:
+                filled += 1
+            else:
+                changed += 1
+            if scanned % 500 == 0:
+                session.commit()
+        if not dry_run:
+            session.commit()
+        typer.echo("")
+        typer.echo("=" * 60)
+        typer.echo(f"Works scanned: {scanned}")
+        if dry_run:
+            typer.echo(f"Works would fill: {filled}")
+            typer.echo(f"Works would change: {changed}")
+        else:
+            typer.echo(f"Works filled: {filled}")
+            typer.echo(f"Works changed: {changed}")
+        typer.echo(f"Works skipped: {skipped}")

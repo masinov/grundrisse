@@ -647,7 +647,27 @@ npm run dev
 ```bash
 # From repo root
 docker compose up -d db        # Start database
-docker compose up api frontend # Start API and frontend
+## Docker Compose (recommended)
+
+If you already have Postgres running on your host (port 5432), run API+frontend without starting the compose db:
+
+```bash
+API_DATABASE_URL="postgresql://grundrisse:grundrisse@host.docker.internal:5432/grundrisse" \
+docker compose up --build api frontend --no-deps
+```
+
+If you use `sudo docker compose ...`, ensure env vars pass through:
+
+```bash
+API_DATABASE_URL="postgresql://grundrisse:grundrisse@host.docker.internal:5432/grundrisse" \
+sudo -E docker compose up --build api frontend --no-deps
+```
+
+To use the containerized db instead, stop your host Postgres (free port 5432) and run:
+
+```bash
+docker compose up --build db api frontend
+```
 
 # Or all together:
 docker compose up
@@ -668,6 +688,9 @@ CORS_ORIGINS=http://localhost:3000,https://grundrisse.org
 
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
+# Optional: if running frontend in Docker, server-side fetches need to use the Docker service name.
+# docker-compose.yml sets this automatically, but you can override it here if needed.
+API_URL_INTERNAL=http://api:8000
 ```
 
 ---

@@ -66,6 +66,8 @@ class Work(Base):
     work_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
     author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("author.author_id"))
     title: Mapped[str] = mapped_column(String(1024), nullable=False)
+    # Display/canonical title for UI/search; does NOT participate in deterministic work_id generation.
+    title_canonical: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     work_type: Mapped[WorkType] = mapped_column(
         Enum(WorkType, native_enum=False), nullable=False, default=WorkType.other
     )
@@ -101,6 +103,8 @@ class Edition(Base):
     translator_editor: Mapped[str | None] = mapped_column(String(512), nullable=True)
     publication_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    # Source-specific metadata extracted from the ingested page(s), e.g. marxists.org header fields.
+    source_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     ingest_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("ingest_run.ingest_run_id"))
 
     work: Mapped[Work] = relationship()
@@ -507,6 +511,134 @@ class WorkDiscovery(Base):
     __table_args__ = (Index("ix_work_discovery_ingestion_status", "ingestion_status"),)
 
 
+class WorkMetadataRun(Base):
+    __tablename__ = "work_metadata_run"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    git_commit_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    strategy: Mapped[str] = mapped_column(String(64), nullable=False)
+    params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    sources: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
+
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="started")
+    error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    works_scanned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    works_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    works_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    works_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class WorkMetadataEvidence(Base):
+    __tablename__ = "work_metadata_evidence"
+
+    evidence_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("work_metadata_run.run_id"))
+    work_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("work.work_id"))
+
+    source_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_locator: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    raw_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    raw_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    extracted: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_work_metadata_evidence_work", "work_id"),
+        Index("ix_work_metadata_evidence_run", "run_id"),
+        Index("ix_work_metadata_evidence_source", "source_name"),
+    )
+
+
+class WorkDateFinal(Base):
+    """
+    Frozen, provenance-backed first-publication date for a Work.
+
+    This is intentionally separate from `work.publication_date` (legacy/heuristic field) so that we can:
+    - collect multiple candidates over time in evidence tables
+    - finalize once, then never overwrite unless explicitly forced
+    """
+
+    __tablename__ = "work_date_final"
+
+    work_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("work.work_id"), primary_key=True)
+
+    # Canonical target: first-publication date (what becomes public).
+    first_publication_date: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    method: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    precision: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
+    # Provenance
+    final_evidence_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("work_metadata_evidence.evidence_id"), nullable=True
+    )
+    finalized_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("work_metadata_run.run_id"), nullable=True
+    )
+    finalized_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    # finalized | heuristic | unknown | conflict
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="finalized")
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_work_date_final_status", "status"),
+        Index("ix_work_date_final_method", "method"),
+    )
+
+
+class AuthorMetadataRun(Base):
+    __tablename__ = "author_metadata_run"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    git_commit_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    strategy: Mapped[str] = mapped_column(String(64), nullable=False)
+    params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    sources: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
+
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="started")
+    error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    authors_scanned: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    authors_updated: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    authors_skipped: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    authors_failed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class AuthorMetadataEvidence(Base):
+    __tablename__ = "author_metadata_evidence"
+
+    evidence_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("author_metadata_run.run_id"))
+    author_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("author.author_id"))
+
+    source_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    source_locator: Mapped[str | None] = mapped_column(Text, nullable=True)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+
+    raw_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    raw_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    extracted: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (
+        Index("ix_author_metadata_evidence_author", "author_id"),
+        Index("ix_author_metadata_evidence_run", "run_id"),
+        Index("ix_author_metadata_evidence_source", "source_name"),
+    )
+
+
 def import_models() -> None:
     # Used by Alembic autogenerate. Keep import side effects explicit.
     _ = (
@@ -533,4 +665,9 @@ def import_models() -> None:
         UrlCatalogEntry,
         ClassificationRun,
         WorkDiscovery,
+        WorkMetadataRun,
+        WorkMetadataEvidence,
+        WorkDateFinal,
+        AuthorMetadataRun,
+        AuthorMetadataEvidence,
     )

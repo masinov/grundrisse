@@ -145,6 +145,9 @@ venv/
 
 # Runtime caches (metadata resolvers, crawler helpers)
 data/cache/
+# Package-local runtime caches
+packages/core/data/cache/
+packages/core/data/cache/**
 ENV/
 env.bak/
 venv.bak/

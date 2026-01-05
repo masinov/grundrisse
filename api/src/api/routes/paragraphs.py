@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from api.deps import DbSession
-from grundrisse_core.db.models import ClaimExtraction, ConceptMention, Paragraph
+from grundrisse_core.db.models import Claim, ClaimEvidence, ConceptMention, Paragraph, SentenceSpan, SpanGroup
 
 router = APIRouter()
 
@@ -48,33 +48,49 @@ def get_paragraph_extractions(db: DbSession, paragraph_id: UUID) -> ParagraphExt
     if not paragraph:
         raise HTTPException(status_code=404, detail="Paragraph not found")
 
-    # Get concept mentions
+    # Some older ingestions accidentally created duplicate paragraph rows per (edition_id, order_index).
+    # Resolve extractions by (edition_id, order_index) so the reader sees the full set.
+    edition_id = paragraph.edition_id
+    order_index = paragraph.order_index
+
+    # Concept mentions are attached to sentence spans; sentence spans carry para_index (= paragraph order).
     concept_rows = db.execute(
-        select(ConceptMention).where(ConceptMention.paragraph_id == paragraph_id)
+        select(ConceptMention)
+        .select_from(ConceptMention)
+        .join(SentenceSpan, SentenceSpan.span_id == ConceptMention.span_id)
+        .where(SentenceSpan.edition_id == edition_id)
+        .where(SentenceSpan.para_index == order_index)
     ).scalars().all()
 
     concepts = [
         ConceptMentionInfo(
             mention_id=cm.mention_id,
-            text=cm.surface_form or cm.canonical_form or "",
-            char_start=cm.char_start,
-            char_end=cm.char_end,
+            text=cm.surface_form or "",
+            char_start=cm.start_char_in_sentence,
+            char_end=cm.end_char_in_sentence,
         )
         for cm in concept_rows
     ]
 
-    # Get claims
+    # Claims are attached via ClaimEvidence -> SpanGroup(para_id) -> Paragraph(order_index) -> Claim.
     claim_rows = db.execute(
-        select(ClaimExtraction).where(ClaimExtraction.paragraph_id == paragraph_id)
+        select(Claim)
+        .select_from(Claim)
+        .join(ClaimEvidence, ClaimEvidence.claim_id == Claim.claim_id)
+        .join(SpanGroup, SpanGroup.group_id == ClaimEvidence.group_id)
+        .join(Paragraph, Paragraph.para_id == SpanGroup.para_id)
+        .where(Paragraph.edition_id == edition_id)
+        .where(Paragraph.order_index == order_index)
+        .distinct()
     ).scalars().all()
 
     claims = [
         ClaimInfo(
-            claim_id=ce.claim_id,
-            text=ce.claim_text or "",
-            confidence=ce.confidence,
+            claim_id=c.claim_id,
+            text=c.claim_text_canonical or "",
+            confidence=c.confidence,
         )
-        for ce in claim_rows
+        for c in claim_rows
     ]
 
     return ParagraphExtractionsResponse(

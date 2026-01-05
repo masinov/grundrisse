@@ -76,6 +76,8 @@ def parse_html_to_blocks(html: str) -> list[ParsedBlock]:
             continue
 
         if node.name == "p":
+            if _is_marxists_header_or_intro_paragraph(node):
+                continue
             text = _clean_text(node.get_text(" ", strip=True))
             if not text:
                 continue
@@ -185,11 +187,65 @@ def _is_noise_paragraph(text: str) -> bool:
         or "creative commons" in t
         or t.startswith("written:")
         or t.startswith("first published:")
-        or t.startswith("transcribed")
+        or t.startswith("published:")
+        or t.startswith("source:")
         or t.startswith("translated:")
+        or t.startswith("transcribed")
+        or t.startswith("transcription")
         or t.startswith("proofed:")
         or t.startswith("copyleft:")
         or t.startswith("permission is granted to copy")
         or t.startswith("see note in:")
         or t == "index"
     )
+
+
+_HEADER_KV_PREFIXES = (
+    "written:",
+    "source:",
+    "first published:",
+    "published:",
+    "translated:",
+    "transcribed:",
+    "transcription:",
+    "transcription/markup:",
+    "transcription/mark-up:",
+    "public domain:",
+    "copyleft:",
+)
+
+
+def _is_marxists_header_or_intro_paragraph(p: Tag) -> bool:
+    """
+    marxists.org often includes a header metadata block like:
+      <p class="information"><span class="info">Written:</span> ...<br/>...</p>
+    and an editorial intro paragraph:
+      <p class="intro"><strong>... – Editor</strong></p>
+
+    These should not be mixed into the main text paragraphs.
+    """
+    classes = set(p.get("class") or [])
+    if "intro" in classes:
+        return True
+    if "information" in classes:
+        # Some pages use p.information for footnotes; only suppress if it looks like header KV metadata.
+        text = _clean_text(p.get_text(" ", strip=True)).lower()
+        if any(text.startswith(prefix) for prefix in _HEADER_KV_PREFIXES):
+            return True
+        spans = p.find_all("span", class_="info")
+        for s in spans[:6]:
+            label = _clean_text(s.get_text(" ", strip=True)).rstrip(":").lower()
+            if label in {
+                "written",
+                "source",
+                "first published",
+                "published",
+                "translated",
+                "transcription",
+                "transcription/markup",
+                "transcription/mark-up",
+                "public domain",
+                "copyleft",
+            }:
+                return True
+    return False
