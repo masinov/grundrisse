@@ -1,0 +1,300 @@
+{
+  "report_metadata": {
+    "generated_at": "2026-01-20",
+    "database_url": "postgresql+psycopg://grundrisse:grundrisse@localhost:5432/grundrisse",
+    "purpose": "Assess metadata completeness for argument extraction corpus preparation"
+  },
+  "corpus_overview": {
+    "total_works": 19098,
+    "total_editions": 19111,
+    "total_authors": 1333,
+    "notes": "Most works (99.96%) have a single edition. 8 works have multiple editions/translations."
+  },
+  "publication_date_coverage": {
+    "works_with_derived_dates": {
+      "count": 19098,
+      "percentage": 100.0,
+      "note": "All works have a derived date record (even if empty)"
+    },
+    "works_with_display_year": {
+      "count": 15621,
+      "percentage": 81.8,
+      "note": "Works that have at least some date information"
+    },
+    "works_without_any_date": {
+      "count": 3477,
+      "percentage": 18.2,
+      "note": "Works with no date information (display_date_field = 'unknown')"
+    },
+    "display_date_field_distribution": {
+      "first_publication_date": {
+        "count": 14202,
+        "percentage": 74.4
+      },
+      "written_date": {
+        "count": 1419,
+        "percentage": 7.4
+      },
+      "unknown": {
+        "count": 3477,
+        "percentage": 18.2
+      }
+    }
+  },
+  "date_quality_metrics": {
+    "precision": {
+      "day_level": {
+        "count": 5248,
+        "percentage": 27.5,
+        "note": "Highest quality - exact day/month/year"
+      },
+      "year_only": {
+        "count": 10373,
+        "percentage": 54.3,
+        "note": "Year-level precision"
+      },
+      "null": {
+        "count": 3477,
+        "percentage": 18.2,
+        "note": "No date available"
+      }
+    },
+    "confidence": {
+      "high_0.90_to_1.00": {
+        "count": 7946,
+        "percentage": 41.6,
+        "note": "High-confidence dates from authoritative sources"
+      },
+      "good_0.70_to_0.89": {
+        "count": 1876,
+        "percentage": 9.8
+      },
+      "medium_0.50_to_0.69": {
+        "count": 15,
+        "percentage": 0.1
+      },
+      "low_0.30_to_0.49": {
+        "count": 4445,
+        "percentage": 23.3,
+        "note": "Includes title_date heuristics"
+      },
+      "very_low_0.00_to_0.29": {
+        "count": 4816,
+        "percentage": 25.2,
+        "note": "Includes after-death publications and weak signals"
+      }
+    },
+    "summary": {
+      "good_to_high_confidence": {
+        "count": 9822,
+        "percentage": 51.4
+      },
+      "low_confidence_or_missing": {
+        "count": 9276,
+        "percentage": 48.6
+      }
+    }
+  },
+  "metadata_source_distribution": {
+    "first_publication_sources": {
+      "marxists_source_metadata": {
+        "count": 7600,
+        "percentage": 53.5,
+        "note": "Extracted from edition.source_metadata (marxists.org headers)"
+      },
+      "marxists_ingested_html": {
+        "count": 5315,
+        "percentage": 37.4,
+        "note": "Legacy evidence from older ingestion runs"
+      },
+      "marxists": {
+        "count": 951,
+        "percentage": 6.7,
+        "note": "Generic marxists.org source"
+      },
+      "openlibrary": {
+        "count": 195,
+        "percentage": 1.4,
+        "note": "External metadata from OpenLibrary API"
+      },
+      "wikidata": {
+        "count": 141,
+        "percentage": 1.0,
+        "note": "External metadata from Wikidata SPARQL"
+      }
+    },
+    "note": "Most dates (97.6%) derived from marxists.org headers. Only 2.4% from external sources."
+  },
+  "source_metadata_extraction": {
+    "editions_with_source_metadata": {
+      "count": 17782,
+      "percentage": 93.0
+    },
+    "editions_without_source_metadata": {
+      "count": 1329,
+      "percentage": 7.0,
+      "note": "Mostly chapter pages in multi-page works"
+    },
+    "edition_headers_materialized": {
+      "count": 17782,
+      "percentage": 93.0,
+      "note": "EditionSourceHeader table populated from source_metadata"
+    },
+    "external_metadata_evidence_rows": {
+      "count": 16026,
+      "note": "Stored evidence from Wikidata/OpenLibrary queries"
+    }
+  },
+  "author_metadata_coverage": {
+    "total_authors": 1333,
+    "with_birth_year": {
+      "count": 698,
+      "percentage": 52.4
+    },
+    "with_death_year": {
+      "count": 613,
+      "percentage": 46.0
+    },
+    "with_both_birth_and_death": {
+      "count": 610,
+      "percentage": 45.8,
+      "note": "Limits ability to validate publication dates against lifespans"
+    }
+  },
+  "gap_analysis": {
+    "unknown_date_works": {
+      "total_count": 3477,
+      "percentage": 18.2,
+      "with_missing_edition_metadata": {
+        "count": 1069,
+        "percentage_of_unknown": 30.7,
+        "note": "At least one edition lacks source_metadata"
+      },
+      "with_external_evidence_attempts": {
+        "count": 594,
+        "percentage_of_unknown": 17.1,
+        "note": "Wikidata/OpenLibrary queries attempted"
+      },
+      "no_external_evidence_attempts": {
+        "count": 2883,
+        "percentage_of_unknown": 82.9,
+        "note": "Have NOT been queried externally - potential for enrichment"
+      },
+      "top_authors_with_unknown_dates": [
+        {"author": "Joseph Stalin", "count": 657},
+        {"author": "Vladimir Ilyich Lenin", "count": 499},
+        {"author": "William Morris", "count": 209},
+        {"author": "Karl Marx", "count": 86},
+        {"author": "Karl Radek", "count": 83},
+        {"author": "Mao Zedong", "count": 67},
+        {"author": "Leon Trotsky", "count": 65},
+        {"author": "Albert Weisbord", "count": 51},
+        {"author": "Alexander Solomonovich Lozovsky", "count": 50},
+        {"author": "Georgi Valentinovich Plekhanov", "count": 49}
+      ]
+    },
+    "chapter_page_metadata_gap": {
+      "chapter_like_urls": {
+        "count": 689,
+        "missing_source_metadata": 361,
+        "missing_percentage": 52.4,
+        "note": "Chapter pages (ch\\d, chapter\\d, app\\d, pr\\d) missing metadata at 7.5x the overall rate"
+      },
+      "overall_missing_rate": 7.0,
+      "implication": "Multi-page works often have metadata only on root/preface pages"
+    }
+  },
+  "assessment_summary": {
+    "strengths": [
+      "100% of works have been processed through date derivation pipeline",
+      "81.8% of works have at least some date information",
+      "51.4% have good-to-high confidence dates",
+      "27.5% have day-level precision (excellent provenance)",
+      "93% of editions have source metadata extracted",
+      "Robust provenance tracking with evidence tables"
+    ],
+    "weaknesses": [
+      "18.2% of works have no date at all (3,477 works)",
+      "48.6% have low confidence or missing dates",
+      "Only 45.8% of authors have lifespan data for validation",
+      "83% of unknown-date works have not been queried externally (untapped potential)",
+      "Chapter pages in multi-page works lack metadata (52.4% missing rate)"
+    ],
+    "overall_readiness": {
+      "status": "PARTIALLY READY",
+      "percentage_complete": 81.8,
+      "confidence_qualified_percentage": 51.4,
+      "notes": [
+        "Corpus is usable for argument extraction with date-aware filtering",
+        "18.2% of works should be marked as 'date uncertain' or excluded from chronological analysis",
+        "External enrichment could improve ~2,900 works (15% of corpus)"
+      ]
+    }
+  },
+  "recommended_actions": {
+    "high_priority": [
+      {
+        "action": "Mark 3,477 unknown-date works explicitly as 'date_uncertain' in metadata",
+        "rationale": "Transparency for downstream analysis - these works should not be silently included in chronological studies",
+        "effort": "LOW - database update only",
+        "impact": "HIGH - prevents incorrect chronological assumptions"
+      },
+      {
+        "action": "Run external enrichment for 2,883 unknown-date works not yet queried",
+        "rationale": "17% have external evidence, suggesting ~500 more dates could be recovered (17% of 2,883)",
+        "effort": "MEDIUM - network I/O, API rate limits",
+        "impact": "MEDIUM - could reduce unknown from 18.2% to ~15%",
+        "command": "grundrisse-ingest resolve-publication-dates --only-missing --sources wikidata,openlibrary --limit 3000"
+      }
+    ],
+    "medium_priority": [
+      {
+        "action": "Resolve author lifespans for remaining 54.2% of authors",
+        "rationale": "Enables better date validation and confidence scoring",
+        "effort": "MEDIUM - Wikidata queries",
+        "impact": "MEDIUM - improves confidence scoring, catches more after-death issues",
+        "command": "grundrisse-ingest resolve-author-lifespans --only-missing --limit 1000"
+      },
+      {
+        "action": "Propagate metadata from root pages to chapter pages in multi-page works",
+        "rationale": "689 chapter URLs, 361 missing metadata - could inherit from parent",
+        "effort": "HIGH - requires work-level grouping logic",
+        "impact": "LOW-MEDIUM - most of these already have dates via work_id rollup"
+      }
+    ],
+    "low_priority": [
+      {
+        "action": "Re-derive dates with improved heuristics",
+        "rationale": "Recent code changes improve periodical vs. edition detection",
+        "effort": "LOW - re-run derivation",
+        "impact": "LOW - may marginally improve confidence scores",
+        "command": "grundrisse-ingest derive-work-dates --force --limit 20000"
+      },
+      {
+        "action": "Use GLM-4.7 to extract dates from work titles for low-confidence cases",
+        "rationale": "Some titles contain dates (e.g., 'Order of the Day June 21, 1944')",
+        "effort": "MEDIUM - LLM extraction + validation",
+        "impact": "LOW - small percentage improvement"
+      }
+    ]
+  },
+  "definition_of_done_checklist": {
+    "all_texts_cleaned": {
+      "status": "COMPLETE",
+      "note": "Ingestion pipeline normalizes HTML to clean text"
+    },
+    "standardized_metadata_author_title_language_source": {
+      "status": "COMPLETE",
+      "note": "All works have Author/Title/Language/Source URL"
+    },
+    "publication_dates_extracted_or_marked_uncertain": {
+      "status": "INCOMPLETE",
+      "current": "81.8% have dates, 18.2% unmarked as uncertain",
+      "required_action": "Mark unknown dates explicitly as uncertain"
+    },
+    "machine_readable_outputs": {
+      "status": "COMPLETE",
+      "note": "PostgreSQL + JSON date bundles"
+    }
+  }
+}

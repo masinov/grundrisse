@@ -1,0 +1,199 @@
+{
+  "corpus_overview": {
+    "total_works": 19098,
+    "total_authors": 1333,
+    "total_editions": 19111,
+    "derived_date_status": {
+      "first_publication_date": 14202,
+      "unknown": 3477,
+      "written_date": 1419
+    },
+    "author_lifespan": {
+      "total": 1333,
+      "with_birth": 698,
+      "with_death": 613
+    },
+    "metadata_coverage": {
+      "total_editions": 19111,
+      "with_metadata": 17782,
+      "percentage": 93.0458898016849
+    },
+    "evidence_coverage": 10763,
+    "works_by_top_author": {
+      "Vladimir Ilyich Lenin": 4207,
+      "Joseph Stalin": 759,
+      "Leon Trotsky": 728,
+      "Chris Harman": 629,
+      "Max Shachtman": 403,
+      "James Patrick Cannon": 376,
+      "E. Belfort Bax": 367,
+      "William Morris": 320,
+      "Karl Marx": 313,
+      "Edgar Hardcastle": 302,
+      "James Connolly": 283,
+      "Cyril Lionel Robert James": 281,
+      "Bob Gould": 263,
+      "Ted Grant": 259,
+      "Dorothy Frances Montefiore": 255,
+      "Deng Xiaoping": 210,
+      "Ernest Mandel": 183,
+      "Paul Foot": 177,
+      "Joseph Hansen": 173,
+      "Tony Cliff": 168
+    },
+    "unknown_by_author": {
+      "Joseph Stalin": 657,
+      "Vladimir Ilyich Lenin": 499,
+      "William Morris": 209,
+      "Karl Marx": 86,
+      "Karl Radek": 83,
+      "Mao Zedong": 67,
+      "Leon Trotsky": 65,
+      "Albert Weisbord": 51,
+      "Alexander Solomonovich Lozovsky": 50,
+      "Georgi Valentinovich Plekhanov": 49,
+      "Friedrich Engels": 48,
+      "Manabendra Nath Roy": 35,
+      "Deng Xiaoping": 32,
+      "Tony Cliff": 29,
+      "Shibdas Ghosh": 29,
+      "Georg Wilhelm Friedrich Hegel": 29,
+      "Bhagat Singh": 25,
+      "Unknown": 24,
+      "Vinod Mishra": 24,
+      "Ho Chi Minh": 23
+    },
+    "header_coverage": {
+      "total_headers": 17782,
+      "with_written": 12957,
+      "with_first_published": 12944,
+      "with_published": 12954
+    },
+    "sample_urls": [
+      "https://www.marxists.org/archive/adler-friedrich/1936/trials.htm",
+      "https://www.marxists.org/archive/aldred-guy/1906/the-case-for-anarchism.html",
+      "https://www.marxists.org/archive/aldred-guy/1908/the-logic-and-economics-of-the-class.html",
+      "https://www.marxists.org/archive/aldred-guy/1910/representation-and-the-state.html",
+      "https://www.marxists.org/archive/aldred-guy/1912/richard-carlile-his-battle-for-the-free-press/authors-note.html"
+    ]
+  },
+  "data_gaps": {
+    "url_pattern_unknown_count": 20,
+    "url_pattern_unknown_sample": [
+      {
+        "title": "Antoine Ker",
+        "author": "Karl Radek",
+        "urls": [
+          "https://www.marxists.org/archive/radek/1923/08/ker.htm"
+        ]
+      },
+      {
+        "title": "Marx-Engels Correspondence 1895",
+        "author": "Karl Marx",
+        "urls": [
+          "https://www.marxists.org/archive/marx/works/1895/letters/95_05_21.htm"
+        ]
+      },
+      {
+        "title": "Fight Ideological Decay and Strengthen Party Unity",
+        "author": "Vinod Mishra",
+        "urls": [
+          "https://www.marxists.org/reference/archive/mishra/1994/03/x01.htm"
+        ]
+      },
+      {
+        "title": "Let us resolve to emerge through this congress as a united, confident and strong party of national liberation and people's democracy!",
+        "author": "N. Mishra",
+        "urls": [
+          "https://www.marxists.org/reference/archive/mishra/1997/11/x01.htm"
+        ]
+      },
+      {
+        "title": "Order of the Day May, 1945",
+        "author": "Joseph Stalin",
+        "urls": [
+          "https://www.marxists.org/reference/archive/stalin/works/1945/05/08_1.htm"
+        ]
+      },
+      {
+        "title": "Pozdrav predsednika sveta za ohranjevanje in razvijanje revolucionarnih tradicij in spomeni\u0161ko varstvo",
+        "author": "Boris Kidri\u010d",
+        "urls": [
+          "https://www.marxists.org/slovenian/kajtimir/1977/03/25.htm"
+        ]
+      },
+      {
+        "title": "Notes to the Politbureau of the C.C., R.C.P.(B.) with Draft Decisions",
+        "author": "Vladimir Ilyich Lenin",
+        "urls": [
+          "https://www.marxists.org/archive/lenin/works/1922/apr/09a.htm"
+        ]
+      },
+      {
+        "title": "The Unemployed Movement in England",
+        "author": "John Thomas Murphy",
+        "urls": [
+          "https://www.marxists.org/archive/murphy-jt/1923/02/unemployed.htm"
+        ]
+      },
+      {
+        "title": "Letter on Russian Revolution",
+        "author": "Peter Kropotkin",
+        "urls": [
+          "https://www.marxists.org/reference/archive/kropotkin-peter/1920/letter-revolution.htm"
+        ]
+      },
+      {
+        "title": "\u03a4\u03b1 \u039b\u03b1\u03ca\u03ba\u03ac \u039c\u03ad\u03c4\u03c9\u03c0\u03b1 \u03ba\u03b1\u03b9 \u03b7 \u03c0\u03c1\u03bf\u03bb\u03b5\u03c4\u03b1\u03c1\u03b9\u03b1\u03ba\u03ae \u03c0\u03bf\u03bb\u03b9\u03c4\u03b9\u03ba\u03ae",
+        "author": "P. Pouliopoulos",
+        "urls": [
+          "https://www.marxists.org/ellinika/archive/pouliop/works/1937/06/popfront.htm"
+        ]
+      }
+    ],
+    "metadata_no_derived_sample": [
+      {
+        "title": "Discipline, Calm, Vigilance!",
+        "author": "Dolores Ib\u00e1rruri"
+      },
+      {
+        "title": "Message to Punjab Students' Conference",
+        "author": "Bhagat Singh"
+      },
+      {
+        "title": "Question of a United Front",
+        "author": "Willi M\u00fcnzenberg"
+      },
+      {
+        "title": "Sidelights on the Washington Conference",
+        "author": "Arthur Rosenberg"
+      },
+      {
+        "title": "Essays on Some Unsettled Questions in Political Economy",
+        "author": "John Stuart Mill"
+      },
+      {
+        "title": "We Go On",
+        "author": "Albert Libertad"
+      },
+      {
+        "title": "'Why should a nation be more altruistic than I?'",
+        "author": "Benjamin Tucker"
+      },
+      {
+        "title": "The Social General Strike",
+        "author": "Tom Brown"
+      },
+      {
+        "title": "Organized Vengeance Called \"Justice\"",
+        "author": "Peter Kropotkin"
+      },
+      {
+        "title": "Mao Zedong Thought Must Be Correctly Understood As An Integral Whole",
+        "author": "Deng Xiaoping"
+      }
+    ],
+    "works_without_external_evidence": 8335,
+    "chapter_like_urls": 59762
+  }
+}

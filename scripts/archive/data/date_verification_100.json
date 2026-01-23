@@ -1,0 +1,3353 @@
+[
+  {
+    "work_id": "a22251f9-4c96-53fb-b5c5-868e25ea2af0",
+    "title": "A Concrete Program for the Unemployed",
+    "author": "Albert Weisbord",
+    "birth_year": 1900,
+    "death_year": 1977,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "7ffff97c-8c2e-5c06-bdd4-c4b6c86b1037",
+    "title": "A Fresh Victory for French Imperialism",
+    "author": "Alexander Solomonovich Lozovsky",
+    "birth_year": 1878,
+    "death_year": 1952,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 4,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/lozovsky/1923/04/victory.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "219f26f3-3d4b-545b-9543-21a42e146283",
+    "title": "Lenin at Smolny",
+    "author": "Alexandra Kollontai",
+    "birth_year": 1872,
+    "death_year": 1952,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1917,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/kollonta/1917/lenin-smolny.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1969,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Reminiscences of Vladimir Ilyich Lenin. In 5 volumes, Vol. 2, Politizdat, Moscow, 1969, pp. 456-459;",
+          "source": "source_metadata.first_published"
+        },
+        {
+          "year": 1969,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Reminiscences of Vladimir Ilyich Lenin. In 5 volumes, Vol. 2, Politizdat, Moscow, 1969, pp. 456-459;",
+          "source": "source_metadata.fields.first published",
+          "field_value": "Reminiscences of Vladimir Ilyich Lenin. In 5 volumes, Vol. 2, Politizdat, Moscow, 1969, pp. 456-459;"
+        },
+        {
+          "year": 1984,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Alexandra Kollontai: Selected Articles and Speeches, Progress Publishers, 1984;",
+          "source": "source_metadata.fields.source",
+          "field_value": "Alexandra Kollontai: Selected Articles and Speeches, Progress Publishers, 1984;"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1969,
+          "source": "marxists_ingested_html",
+          "score": 0.95,
+          "extracted": {
+            "year": 1969,
+            "month": null,
+            "day": null,
+            "precision": "year",
+            "method": "marxists_header_first_published"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "4920f274-a154-5914-9d5d-3ebd1fbfa383",
+    "title": "Report of the Balkan, Swiss and Austrian Commissions",
+    "author": "Alois Neurath",
+    "birth_year": 1886,
+    "death_year": 1955,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 6,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/neurath/1923/06/ecci-swiss-aust.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "5a91eaec-07fd-5609-aeb3-4521122ed7cc",
+    "title": "Characteristic Theses of the Party",
+    "author": "Amadeo Bordiga",
+    "birth_year": 1889,
+    "death_year": 1970,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1951,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/bordiga/works/1951/charthes.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "1e46a2da-faca-53a6-9e29-ec472e0d1cba",
+    "title": "Essay on Ibsen",
+    "author": "Anatoly Vasilyevich Lunacharsky",
+    "birth_year": 1875,
+    "death_year": 1933,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "973f4324-e89a-55b2-b38c-49d747dac12f",
+    "title": "Dialectics & the Theory of Group Organisation",
+    "author": "Andy Blunden",
+    "birth_year": 1945,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "059baade-bd28-5e73-a93e-e071b35bb978",
+    "title": "Against Pessimism",
+    "author": "Antonio Gramsci",
+    "birth_year": 1891,
+    "death_year": 1937,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1924,
+          "month": 3,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/gramsci/1924/03/pessimism.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1924,
+          "month": 3,
+          "day": 15,
+          "precision": "day",
+          "raw": "in L'Ordine Nuovo, 15 March 1924;",
+          "source": "source_metadata.fields.first published",
+          "field_value": "in L'Ordine Nuovo, 15 March 1924;"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "8b0a3610-f1d8-57ed-9966-52d843a97522",
+    "title": "Behind the Scenes in Lausanne",
+    "author": "Arthur Rosenberg",
+    "birth_year": 1889,
+    "death_year": 1943,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1922,
+          "month": 12,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/rosenberg/1922/12/lausanne.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "f6bedce5-2452-5aab-8831-b6c945d273bb",
+    "title": "Bebel's Great Speech",
+    "author": "August Bebel",
+    "birth_year": 1840,
+    "death_year": 1913,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1905,
+          "month": 11,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/bebel/1905/11/x01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "b74cd696-3ce1-5c02-ae9c-48a3c4f14eea",
+    "title": "Communalism and Socialism in Africa",
+    "author": "Baruch Hirson",
+    "birth_year": 1921,
+    "death_year": 1999,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1989,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/hirson/1989/clr-james.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "82664c21-c00d-5f19-8f30-6f2d60bddc46",
+    "title": "Letter on Translating Stirner",
+    "author": "Benjamin R. Tucker",
+    "birth_year": 1854,
+    "death_year": 1939,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1907,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/tucker/1907/translating-stirner.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c4cebb5a-f682-5516-a3ba-b20714a229c6",
+    "title": "Beware, Ye Bureaucracy",
+    "author": "Bhagat Singh",
+    "birth_year": 1907,
+    "death_year": 1931,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1928,
+          "month": 12,
+          "day": 18,
+          "precision": "day",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/bhagat-singh/1928/12/18.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [
+        {
+          "year": 1928,
+          "month": 12,
+          "day": 18,
+          "precision": "day",
+          "raw": "December 18, 1928",
+          "source": "text_content_search",
+          "match": "December 18, 1928"
+        }
+      ],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "9663215c-0f32-56ee-be9e-de40e43b7710",
+    "title": "A Triple Crisis",
+    "author": "Charles Rappoport",
+    "birth_year": 1865,
+    "death_year": 1941,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1922,
+          "month": 1,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/rappoport/1922/01/triple.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c61a6c16-ce53-57d1-a269-0fd3314acf30",
+    "title": "Boycott Elections! International Significance of the Slogan",
+    "author": "Charu Mazumdar",
+    "birth_year": 1918,
+    "death_year": 1972,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1968,
+          "month": 12,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/mazumdar/1968/12/x01.html"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1968,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Liberation, December 1968",
+          "source": "source_metadata.published"
+        },
+        {
+          "year": 1968,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Liberation, December 1968",
+          "source": "source_metadata.fields.published",
+          "field_value": "Liberation, December 1968"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1968,
+          "source": "marxists_ingested_html",
+          "score": 0.92,
+          "extracted": {
+            "year": 1968,
+            "month": null,
+            "day": null,
+            "precision": "year",
+            "method": "marxists_header_published"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "d87a720f-8474-57a8-a4e9-fe96d1f9fa36",
+    "title": "Death to Imperialism",
+    "author": "Cheddi Jagan",
+    "birth_year": 1918,
+    "death_year": 1997,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1954,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/jagan/1954/death-imperialism.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "8be83aa4-b2b3-55b9-9fe9-558de596e5ee",
+    "title": "Colonialism is Doomed",
+    "author": "Che Guevara",
+    "birth_year": 1928,
+    "death_year": 1967,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1964,
+          "month": 12,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/guevara/1964/12/11-alt.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "3bebeaae-b393-5804-be31-cce97d85151b",
+    "title": "Crisis in Eastern Europe (Myth of the miracle market)",
+    "author": "Chris Harman",
+    "birth_year": 1942,
+    "death_year": 2009,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1988,
+          "month": 7,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/harman/1988/07/5-market.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c82ce691-0561-5206-8bb1-e8c49f0a8982",
+    "title": "Lenin on the Women's Question",
+    "author": "Clara Zetkin",
+    "birth_year": 1857,
+    "death_year": 1933,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1920,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/zetkin/1920/lenin/zetkin1.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "1800cb00-48ea-5ea5-b813-117fd397adb9",
+    "title": "Current Political Situation and Review of Our Tactics",
+    "author": "CPI-ML(L)",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1997,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/mishra/1997/x01/x05.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "7309c1a4-2986-5fdf-8e17-4215aba9af54",
+    "title": "Bourbon Campaign to Keep Jim Crow in Education",
+    "author": "Cyril Lionel Robert James",
+    "birth_year": 1901,
+    "death_year": 1989,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1948,
+          "month": 2,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/james-clr/works/1948/02/segregation.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "32c9ac9e-9f55-5f80-9d5a-e7ea5c6b153c",
+    "title": "A Debate",
+    "author": "Cyril Smith",
+    "birth_year": 1928,
+    "death_year": 2010,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "5a9ab54d-f864-5935-9a78-5344ab91fe70",
+    "title": "Answers",
+    "author": "Daniel De Leon",
+    "birth_year": 1852,
+    "death_year": 1914,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1907,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/deleon/works/1907/answers/08-spettel.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "7aa18df8-76cb-5a85-87d9-62fcdae2530a",
+    "title": "Adhere to the Principle “To Each According To His Work”",
+    "author": "Deng Xiaoping",
+    "birth_year": 1904,
+    "death_year": 1997,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1978,
+          "month": 28,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/deng-xiaoping/1978/28.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "aba2fa51-3733-5e52-bf72-a443d000f6ef",
+    "title": "Commissars!",
+    "author": "Dolores Ibárruri",
+    "birth_year": 1895,
+    "death_year": 1989,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1937,
+          "month": 3,
+          "day": 19,
+          "precision": "day",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/ibarruri/1937/03/19.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1938,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Speeches and Articles pp. 86-88, Foreign Languages Publishing House, 1938",
+          "source": "source_metadata.fields.source",
+          "field_value": "Speeches and Articles pp. 86-88, Foreign Languages Publishing House, 1938"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1938,
+          "source": "marxists_ingested_html",
+          "score": 0.9,
+          "extracted": {
+            "year": 1938,
+            "month": null,
+            "day": null,
+            "precision": "year",
+            "method": "marxists_header_source"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "b82a92cd-2c8f-5052-8efe-91ae99f54a32",
+    "title": "Anti-Militarism from the Workers’ Point of View",
+    "author": "Dorothy Frances Montefiore",
+    "birth_year": 1851,
+    "death_year": 1933,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1913,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/montefiore/1913/anti-militarism.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "d2df460b-4c93-51ed-a439-491c5b754af7",
+    "title": "Fascism in the United States",
+    "author": "Earl Russell Browder",
+    "birth_year": 1891,
+    "death_year": 1973,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 12,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/browder/1923/12/us-fascism.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "9e8141d3-d470-5af1-a3f4-7b3e7527011d",
+    "title": "A Common Misconception",
+    "author": "E. Belfort Bax",
+    "birth_year": 1854,
+    "death_year": 1926,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1900,
+          "month": 11,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/bax/1900/11/misconception.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1900,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "21st November 1900 in German in Die Neue Zeit, XIX, 1;",
+          "source": "source_metadata.fields.first published",
+          "field_value": "21st November 1900 in German in Die Neue Zeit, XIX, 1;"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "e3cc63a4-0161-57c7-b5a6-83bb14750fe4",
+    "title": "An Account of Abb Vogler",
+    "author": "Eleanor Marx",
+    "birth_year": 1855,
+    "death_year": 1898,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1881,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/eleanor-marx/1881/vogler.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c830f2e3-b082-57d1-bd3e-df121deb3fa6",
+    "title": "Anarchism and Other Essays",
+    "author": "Emma Goldman",
+    "birth_year": 1869,
+    "death_year": 1940,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1917,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/goldman/works/1917/puritanism.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1917,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Emma Goldman, Anarchism and Other Essays (Third revised edition, New York: Mother Earth Publishing Association, 1917.",
+          "source": "source_metadata.fields.first published",
+          "field_value": "Emma Goldman, Anarchism and Other Essays (Third revised edition, New York: Mother Earth Publishing Association, 1917."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "f7219a2f-6b7e-5d61-891c-e48609e7c415",
+    "title": "Declaration of the Democratic Government of Albania",
+    "author": "Enver Hoxha",
+    "birth_year": 1908,
+    "death_year": 1985,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1944,
+          "month": 10,
+          "day": 23,
+          "precision": "day",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/hoxha/works/1944/10/23.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1974,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Selected WorksVolume I. 8 Nëntori Publishing House, Tirana, Albania, 1974. pp. 384-387; First published in the booklet \"The 2nd Meeting of the Anti-fascist National Liberation Council,\" 1944.",
+          "source": "source_metadata.fields.source",
+          "field_value": "Selected WorksVolume I. 8 Nëntori Publishing House, Tirana, Albania, 1974. pp. 384-387; First published in the booklet \"The 2nd Meeting of the Anti-fascist National Liberation Council,\" 1944."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "4a6864a1-8452-5048-a131-e36a4d5f5b62",
+    "title": "An Introduction to Marxist Economic Theory",
+    "author": "Ernest Mandel",
+    "birth_year": 1923,
+    "death_year": 1995,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1967,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/mandel/1967/intromet/ch01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "e3ebd9f8-b694-516a-af30-d8d3f7f5db48",
+    "title": "A New Old Interview",
+    "author": "Ernesto Che Guevara",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1959,
+          "month": 4,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/guevara/1959/04/18-abs.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "96144a9c-9225-5f29-a8cd-d67c565e5b9b",
+    "title": "Danzig",
+    "author": "Ernst Meyer",
+    "birth_year": 1962,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1922,
+          "month": 3,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/meyer/1922/03/danzig.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "f9783958-5416-5c83-8eff-6754d070b357",
+    "title": "Blanqui",
+    "author": "Eugene Pottier",
+    "birth_year": 1816,
+    "death_year": 1887,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1881,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/pottier/1881/blanqui.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "e1b07aa4-8e2c-501b-b169-25a2f0d5086f",
+    "title": "Humanism and Science",
+    "author": "Evald Vasilyevich Ilyenkov",
+    "birth_year": 1924,
+    "death_year": 1979,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "94a7c63b-61e7-5ba6-8975-bf1df86ca0b5",
+    "title": "Foreign Exchange Problems in Soviet Russia",
+    "author": "Evgeny Alexeyevich Preobrazhensky",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1921,
+          "month": 11,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/preobrazhensky/1921/11/forex.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c578dda7-9ea4-5afa-8727-0fcdb756d8bf",
+    "title": "Condition of the Working Class in England",
+    "author": "Friedrich Engels",
+    "birth_year": 1820,
+    "death_year": 1895,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1845,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/marx/works/1845/condition-working-class/ch02.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "2cb7c636-b578-5c32-8656-f55eae8fc2ec",
+    "title": "The Aims of Recruiting-Week",
+    "author": "Fritz Heckert",
+    "birth_year": 1884,
+    "death_year": 1936,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1921,
+          "month": 11,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/heckert/1921/11/recruit.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "9ba732b9-3f88-58e7-88a4-2888ec0e50cc",
+    "title": "Against Military Credits",
+    "author": "Georgi Dimitrov",
+    "birth_year": 1882,
+    "death_year": 1949,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1914,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/dimitrov/works/1914/military.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1972,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Georgi Dimitrov, Selected Works Sofia Press, Sofia, Volume 1, 1972, pp. 40-48",
+          "source": "source_metadata.fields.source",
+          "field_value": "Georgi Dimitrov, Selected Works Sofia Press, Sofia, Volume 1, 1972, pp. 40-48"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "75dbb953-eb4c-5b42-a4d9-c557953cf567",
+    "title": "A Critique of Our Critics: Part I",
+    "author": "Georgi Valentinovich Plekhanov",
+    "birth_year": 1856,
+    "death_year": 1918,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1899,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/plekhanov/1899/critic-critic.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1976,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Georgi Plekhanov, Selected Philosophical Works, Volume 2 (Progress Publishers, Moscow, 1976), pp 474-595. Scanned and prepared for the Marxist Internet Archive by Paul Flewers.",
+          "source": "source_metadata.fields.source",
+          "field_value": "Georgi Plekhanov, Selected Philosophical Works, Volume 2 (Progress Publishers, Moscow, 1976), pp 474-595. Scanned and prepared for the Marxist Internet Archive by Paul Flewers."
+        }
+      ],
+      "text_dates": [
+        {
+          "year": 1899,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "1899",
+          "source": "text_content_search",
+          "match": "1899"
+        }
+      ],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "4b6311c2-aaec-51a8-81b5-eb6e7d465be4",
+    "title": "Democratisation Today and Tomorrow",
+    "author": "Georg Lukács",
+    "birth_year": 1885,
+    "death_year": 1971,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "5b78669b-5fc6-5793-b395-386b172ca67e",
+    "title": "Aesthetics",
+    "author": "Georg Wilhelm Friedrich Hegel",
+    "birth_year": 1770,
+    "death_year": 1831,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1988,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1988,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.631701+00:00"
+          }
+        },
+        {
+          "year": 1988,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1988,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.900735+00:00"
+          }
+        },
+        {
+          "year": 1892,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 1892,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.632090+00:00"
+          }
+        },
+        {
+          "year": 2018,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 2018,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.900645+00:00"
+          }
+        },
+        {
+          "year": 2018,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 2018,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.632004+00:00"
+          }
+        },
+        {
+          "year": 1979,
+          "source": "openlibrary",
+          "score": 0.11261739130434784,
+          "extracted": {
+            "year": 1979,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.900821+00:00"
+          }
+        },
+        {
+          "year": 1979,
+          "source": "openlibrary",
+          "score": 0.11261739130434784,
+          "extracted": {
+            "year": 1979,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.631791+00:00"
+          }
+        },
+        {
+          "year": 1993,
+          "source": "openlibrary",
+          "score": 0.11141666666666668,
+          "extracted": {
+            "year": 1993,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:00:46.631606+00:00"
+          }
+        },
+        {
+          "year": 1988,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1988,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.836954+00:00"
+          }
+        },
+        {
+          "year": 1988,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1988,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.833419+00:00"
+          }
+        },
+        {
+          "year": 1892,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 1892,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.833768+00:00"
+          }
+        },
+        {
+          "year": 2018,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 2018,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.833688+00:00"
+          }
+        },
+        {
+          "year": 2018,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 2018,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.836863+00:00"
+          }
+        },
+        {
+          "year": 1979,
+          "source": "openlibrary",
+          "score": 0.11261739130434784,
+          "extracted": {
+            "year": 1979,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.833514+00:00"
+          }
+        },
+        {
+          "year": 1979,
+          "source": "openlibrary",
+          "score": 0.11261739130434784,
+          "extracted": {
+            "year": 1979,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.837042+00:00"
+          }
+        },
+        {
+          "year": 1993,
+          "source": "openlibrary",
+          "score": 0.11141666666666668,
+          "extracted": {
+            "year": 1993,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:25.833275+00:00"
+          }
+        },
+        {
+          "year": 1988,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1988,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.944794+00:00"
+          }
+        },
+        {
+          "year": 1988,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1988,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.935645+00:00"
+          }
+        },
+        {
+          "year": 2018,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 2018,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.936665+00:00"
+          }
+        },
+        {
+          "year": 1892,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 1892,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.936940+00:00"
+          }
+        },
+        {
+          "year": 2018,
+          "source": "openlibrary",
+          "score": 0.12257142857142858,
+          "extracted": {
+            "year": 2018,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.944494+00:00"
+          }
+        },
+        {
+          "year": 1979,
+          "source": "openlibrary",
+          "score": 0.11261739130434784,
+          "extracted": {
+            "year": 1979,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.945167+00:00"
+          }
+        },
+        {
+          "year": 1979,
+          "source": "openlibrary",
+          "score": 0.11261739130434784,
+          "extracted": {
+            "year": 1979,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.935918+00:00"
+          }
+        },
+        {
+          "year": 1993,
+          "source": "openlibrary",
+          "score": 0.11141666666666668,
+          "extracted": {
+            "year": 1993,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:34.935366+00:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "f4532956-8dd6-51d6-8bfe-946a6030d040",
+    "title": "Bang!",
+    "author": "Hal Draper",
+    "birth_year": 1914,
+    "death_year": 1990,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1966,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/draper/1966/bang.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1966,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "New Politics, Volume 5, no 4, Fall 1966. Scanned and prepared for the Marxist Internet Archive by Paul Flewers.",
+          "source": "source_metadata.fields.source",
+          "field_value": "New Politics, Volume 5, no 4, Fall 1966. Scanned and prepared for the Marxist Internet Archive by Paul Flewers."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "876ef085-1d7b-5568-b953-7588689a2620",
+    "title": "English Miners' Conference at Blackpool",
+    "author": "Harry Pollitt",
+    "birth_year": 1890,
+    "death_year": 1960,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1922,
+          "month": 7,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/pollitt/1922/07/miners.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "3180dd0f-955f-5522-b396-f9a61fa4f264",
+    "title": "Civil Peace in 1914 and in 1923",
+    "author": "Heinrich Brandler",
+    "birth_year": 1881,
+    "death_year": 1967,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 5,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/brandler/1923/05/civil-peace.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "fe80b284-599e-52ff-915a-15ba91217973",
+    "title": "Economics of Socialism",
+    "author": "Henry Mayers Hyndman",
+    "birth_year": 1842,
+    "death_year": 1921,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1896,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/hyndman/1896/economics/0-preface.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "9d652e9e-b631-5591-860f-ad2b7adf7da3",
+    "title": "Address On The Occasion Of The Inauguration Of The Congress To Merge The Viet Minh And Lien Viet",
+    "author": "Ho Chi Minh",
+    "birth_year": 1890,
+    "death_year": 1969,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1951,
+          "month": 3,
+          "day": 3,
+          "precision": "day",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/ho-chi-minh/works/1951/03/03.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1951,
+          "month": 3,
+          "day": 3,
+          "precision": "day",
+          "raw": "March 3rd, 1951",
+          "source": "source_metadata.first_published"
+        },
+        {
+          "year": 1951,
+          "month": 3,
+          "day": 3,
+          "precision": "day",
+          "raw": "March 3rd, 1951",
+          "source": "source_metadata.fields.first published",
+          "field_value": "March 3rd, 1951"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1951,
+          "source": "marxists_ingested_html",
+          "score": 0.95,
+          "extracted": {
+            "year": 1951,
+            "month": 3,
+            "day": 3,
+            "precision": "day",
+            "method": "marxists_header_first_published"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "7d1bba4d-165b-5d14-a4cc-f39030d56240",
+    "title": "Myths of the Cold War",
+    "author": "Isaac Deutscher",
+    "birth_year": 1907,
+    "death_year": 1967,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1965,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/deutscher/1965/cold-war.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "1d807e7b-d3b9-5e02-b644-4e28597ec4f0",
+    "title": "American Radicalism: Yesterday, Today and Tomorrow",
+    "author": "James Patrick Cannon",
+    "birth_year": 1890,
+    "death_year": 1974,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1960,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/cannon/works/1960/amrad.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "393b437a-ffea-5473-b1eb-cde67664e719",
+    "title": "Jaurès in the Journal of Jules Renard",
+    "author": "Jean Jaurès",
+    "birth_year": 1859,
+    "death_year": 1914,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "d3f16a64-a3ac-547e-b5d8-504dbae05390",
+    "title": "Ballad of John Maclean",
+    "author": "John Maclean",
+    "birth_year": 1879,
+    "death_year": 1923,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "da56e7e4-e91d-5bd6-9209-1aa677e5e4e4",
+    "title": "40 Fighting Years",
+    "author": "John Ross Campbell",
+    "birth_year": 1894,
+    "death_year": 1969,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1960,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/campbell-jr/1960/40_fighting_years.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "df5f7e5d-2fde-55a9-a532-220e1abce227",
+    "title": "A Revolutionary Workers' Government",
+    "author": "John Thomas Murphy",
+    "birth_year": 1888,
+    "death_year": 1965,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1929,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/murphy-jt/1929/x01/rwg.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "47fd711b-906a-5e1b-ac5b-c95ae5da7be9",
+    "title": "Abolition of National Disabilities",
+    "author": "Joseph Stalin",
+    "birth_year": 1878,
+    "death_year": 1953,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1917,
+          "month": 3,
+          "day": 25,
+          "precision": "day",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/stalin/works/1917/03/25.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "f3050ecc-5c51-5222-8b52-96cfbca271da",
+    "title": "Britain – France – Belgium",
+    "author": "J.T. Walton Newbold",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 1,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/newbold/1923/01/br-fr-be.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c9565f92-a25f-5f89-af80-c47b8fa04648",
+    "title": "Are the Jews a Race?",
+    "author": "Karl Kautsky",
+    "birth_year": 1854,
+    "death_year": 1938,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1914,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/kautsky/1914/jewsrace/ch01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "7c94f951-0499-5e07-9bb0-ef277fd30981",
+    "title": "Economics and Politics in Revolutionary Spain",
+    "author": "Karl Korsch",
+    "birth_year": 1886,
+    "death_year": 1961,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1938,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/korsch/1938/economics-politics-spain.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1938,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "in Living Marxism , Volume 4, Number 3, May 1938 Source: Class Against Class ; Transcribed: by Zdravko Saveski , for marxists.org 2009;",
+          "source": "source_metadata.fields.first published",
+          "field_value": "in Living Marxism , Volume 4, Number 3, May 1938 Source: Class Against Class ; Transcribed: by Zdravko Saveski , for marxists.org 2009;"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c9dcd258-656e-5af4-9dbd-63dad0cd3e3c",
+    "title": "Call for Revolution",
+    "author": "Karl Liebknecht",
+    "birth_year": 1871,
+    "death_year": 1919,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1918,
+          "month": 11,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/liebknecht-k/works/1918/11/call.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1923,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Charles F. Horne (ed.), Source Records of the Great War, Vol. VI, National Alumni, 1923, pp. 366-368.",
+          "source": "source_metadata.fields.source",
+          "field_value": "Charles F. Horne (ed.), Source Records of the Great War, Vol. VI, National Alumni, 1923, pp. 366-368."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1923,
+          "source": "marxists_ingested_html",
+          "score": 0.9,
+          "extracted": {
+            "year": 1923,
+            "month": null,
+            "day": null,
+            "precision": "year",
+            "method": "marxists_header_source"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "78d4acda-0f4a-5998-9c0e-2a844ace3e01",
+    "title": "Address to the Paris Students",
+    "author": "Karl Marx",
+    "birth_year": 1818,
+    "death_year": 1883,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1866,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/marx/iwma/documents/1866/to-paris-students.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1866,
+          "month": 6,
+          "day": 10,
+          "precision": "day",
+          "raw": "in Le Courrier Fran�ais,June 10, 1866;",
+          "source": "source_metadata.published"
+        },
+        {
+          "year": 1866,
+          "month": 6,
+          "day": 10,
+          "precision": "day",
+          "raw": "in Le Courrier Fran�ais,June 10, 1866;",
+          "source": "source_metadata.fields.published",
+          "field_value": "in Le Courrier Fran�ais,June 10, 1866;"
+        },
+        {
+          "year": 1864,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Minutes of the General Council of the International Workingmen’s Association, 1864-1886, Progress Publishers, 1964, translated from the French;",
+          "source": "source_metadata.fields.source",
+          "field_value": "Minutes of the General Council of the International Workingmen’s Association, 1864-1886, Progress Publishers, 1964, translated from the French;"
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1866,
+          "source": "marxists_ingested_html",
+          "score": 0.92,
+          "extracted": {
+            "year": 1866,
+            "month": 6,
+            "day": 10,
+            "precision": "day",
+            "method": "marxists_header_published"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "9ab6efd7-f250-554b-b2fa-7f2d32645aee",
+    "title": "Agitation Theses for the 5th Anniversary of the October Revolution",
+    "author": "Karl Radek",
+    "birth_year": 1885,
+    "death_year": 1939,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1922,
+          "month": 10,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/radek/1922/10/5thanniversary.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "df992ee3-7caa-5083-9cff-06ca5ba12e12",
+    "title": "Answers to the Questions Raised by the Iraqi Journalists' Delegation",
+    "author": "Kim Il Sung",
+    "birth_year": 1912,
+    "death_year": 1994,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1971,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/kim-il-sung/1971/x01/x01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "50612b71-f50c-57e1-ab25-0ebb4d9f4ec7",
+    "title": "A. Lunacharsky",
+    "author": "Leon Trotsky",
+    "birth_year": 1879,
+    "death_year": 1940,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1933,
+          "month": 1,
+          "day": 1,
+          "precision": "day",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/ellinika/archive/trotsky/works/1933/01/01/luna.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "9de6641c-5729-52ac-9d57-3964861ad86c",
+    "title": "Adolescent Pedagogy",
+    "author": "Lev Semyonovich Vygotsky",
+    "birth_year": 1896,
+    "death_year": 1934,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1931,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/vygotsky/works/1931/adolescent/ch10.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "21b5cd54-74a3-5070-bf95-59ded2fee032",
+    "title": "Autopsia, funeral y gloria de la reforma universitaria",
+    "author": "Liborio Justo",
+    "birth_year": 1902,
+    "death_year": 2003,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "b9013a8d-c443-5a84-adb8-bbadd376b5e0",
+    "title": "Foreword",
+    "author": "Lucien Sève",
+    "birth_year": 1926,
+    "death_year": 2020,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1974,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/seve/works/1974/forward.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [
+        {
+          "year": 1947,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "1947",
+          "source": "text_content_search",
+          "match": "1947"
+        }
+      ],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "f5d53498-4d71-55fd-a28c-1d8934798e60",
+    "title": "A New Phase of the Indian National Movement",
+    "author": "Manabendra Nath Roy",
+    "birth_year": 1887,
+    "death_year": 1954,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 4,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/roy/1923/04/newphase.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "705c2c25-193a-548a-a944-875afd1c7059",
+    "title": "A Better World",
+    "author": "Mansoor Hekmat",
+    "birth_year": 1951,
+    "death_year": 2002,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1994,
+          "month": 7,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/hekmat-mansoor/1994/07/better-world/ch01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "24552a69-a3cf-578e-942b-6f14f607f87e",
+    "title": "Address At The Opening Session Of The Ninth National Congress Of The Chinese Communist Party",
+    "author": "Mao Zedong",
+    "birth_year": 1893,
+    "death_year": 1976,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "429f0519-b420-569f-9060-fbc1ab34b9f6",
+    "title": "Behind Jones-Wallace",
+    "author": "Max Shachtman",
+    "birth_year": 1904,
+    "death_year": 1972,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1945,
+          "month": 2,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/shachtma/1945/02/jones-wallace2.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "238ea430-90be-57fc-af8d-d1adc7cda719",
+    "title": "Problems and patterns of development",
+    "author": "Michael Kidron",
+    "birth_year": 1930,
+    "death_year": 2003,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1957,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/kidron/works/1957/thesis/03-extract3.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "80dbbd67-b037-5f1b-bc69-c363f5bb1bb8",
+    "title": "Blasts Pose a Threat to Democracy",
+    "author": "Mishra",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1998,
+          "month": 7,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/mishra/1998/07/x01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "f652ab0f-506f-536e-a4fd-1024f322e0c9",
+    "title": "England and Genoa",
+    "author": "M. Philips Price",
+    "birth_year": 1885,
+    "death_year": 1973,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1922,
+          "month": 2,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/price/1922/02/genoa.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "a916cc34-7a70-5514-91b1-2efbd2f0fcfa",
+    "title": "Capitalism and the Pope",
+    "author": "Nikolai Ivanovich Bukharin",
+    "birth_year": 1888,
+    "death_year": 1938,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1930,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/bukharin/works/1930/capital-pope.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "68c81ab6-21fa-56eb-bb0e-3dafb2684a41",
+    "title": "Axioms of Revolutionary Theory and Practice",
+    "author": "Onorato Damen",
+    "birth_year": 1893,
+    "death_year": 1979,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1974,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/damen/1974/axioms.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "799242f4-6ff0-54fa-b96f-cdd198655302",
+    "title": "Karl Marx: His Life and Works",
+    "author": "Otto Rühle",
+    "birth_year": 1874,
+    "death_year": 1943,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1928,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/ruhle/1928/marx/ch01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "1407bc8a-d81f-5e3c-87bd-c7b2f6a76298",
+    "title": "A Butcher State",
+    "author": "Otto Wille Kuusinen",
+    "birth_year": 1881,
+    "death_year": 1964,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1921,
+          "month": 8,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/kuusinen/1921/08/finland.html"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "9cc21bd5-c7b4-5ad9-a8de-4cf450d025a5",
+    "title": "Anniversary with Hitler's tanks around Moscow",
+    "author": "Pandelis Pouliopoulos",
+    "birth_year": 1900,
+    "death_year": 1943,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1941,
+          "month": 11,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/ellinika/archive/pouliop/works/1941/11/tanks.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c2840445-fe0d-5dc4-847c-ceeab43389fc",
+    "title": "Stop the Cuts",
+    "author": "Paul Foot",
+    "birth_year": 1937,
+    "death_year": 2004,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1976,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/foot-paul/1976/stop/appendix.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "eeb7af22-d80a-5a71-9613-0e7c109e07b6",
+    "title": "40% or 60% – That is the Question",
+    "author": "Paul Frölich",
+    "birth_year": 1884,
+    "death_year": 1953,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 2,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/froelich/1923/02/question.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "c7ce22cb-f8ea-5914-858a-722461c8b6ff",
+    "title": "Authority and Democracy in the United States",
+    "author": "Paul Mattick",
+    "birth_year": 1904,
+    "death_year": 1981,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1979,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/mattick-paul/1979/authority-democracy.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1979,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Root and Branch, vol. 7, pp. 10-14 and 27-28. 1979.",
+          "source": "source_metadata.published"
+        },
+        {
+          "year": 1979,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Root and Branch, vol. 7, pp. 10-14 and 27-28. 1979.",
+          "source": "source_metadata.fields.published",
+          "field_value": "Root and Branch, vol. 7, pp. 10-14 and 27-28. 1979."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1979,
+          "source": "marxists_ingested_html",
+          "score": 0.92,
+          "extracted": {
+            "year": 1979,
+            "month": null,
+            "day": null,
+            "precision": "year",
+            "method": "marxists_header_published"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "fb97ff52-9e52-516f-bf87-9e37fe413da6",
+    "title": "Anarchism and Revolution",
+    "author": "Peter Kropotkin",
+    "birth_year": 1842,
+    "death_year": 1921,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1970,
+          "source": "openlibrary",
+          "score": 0.12645652173913044,
+          "extracted": {
+            "year": 1970,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T00:10:06.492794+00:00"
+          }
+        },
+        {
+          "year": 1970,
+          "source": "openlibrary",
+          "score": 0.12645652173913044,
+          "extracted": {
+            "year": 1970,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T00:10:06.492885+00:00"
+          }
+        },
+        {
+          "year": 1970,
+          "source": "openlibrary",
+          "score": 0.12645652173913044,
+          "extracted": {
+            "year": 1970,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:48:46.701356+00:00"
+          }
+        },
+        {
+          "year": 1970,
+          "source": "openlibrary",
+          "score": 0.12645652173913044,
+          "extracted": {
+            "year": 1970,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:48:46.701409+00:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "b8126a5f-6765-5f8d-a536-14da8eca61f0",
+    "title": "The Macedonian Question and the Communists",
+    "author": "P. Pouliopoulos",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1940,
+          "month": 5,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/ellinika/archive/pouliop/works/1940/05/macedonia.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "cbc042f9-894b-5ba4-bf73-734de4aacc7a",
+    "title": "A Letter to Natalia Trotsky on the Theory of State Capitalism",
+    "author": "Raya Dunayevskaya",
+    "birth_year": 1910,
+    "death_year": 1987,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1947,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/dunayevskaya/works/1947/letter-natalia.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "7dc2982f-8592-5408-b334-b844179a5c51",
+    "title": "Anti-Critique",
+    "author": "Rosa Luxemburg",
+    "birth_year": 1871,
+    "death_year": 1919,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1915,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/luxemburg/1915/anti-critique/ch02.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "60bc7139-bade-5790-9016-c2d7f3ac3b68",
+    "title": "A Discussion of the War Crisis and C.C.F. Policy",
+    "author": "Ross Dowson",
+    "birth_year": 1917,
+    "death_year": 2002,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "0c04c1f2-a160-5b4d-b884-2400b111db37",
+    "title": "Bourgeois Democratic Revolution and India",
+    "author": "Saumyendranath Tagore",
+    "birth_year": 1901,
+    "death_year": 1974,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1938,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/tagore/1938/bourg-demo.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "3f7cc9a8-b050-5b57-92a7-eb2ebf09cf54",
+    "title": "Anarchy",
+    "author": "Sébastien Faure",
+    "birth_year": 1858,
+    "death_year": 1942,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "47d11206-98de-5357-863f-c1cbf45ebbc6",
+    "title": "A Few Economic Problems",
+    "author": "Shibdas Ghosh",
+    "birth_year": 1923,
+    "death_year": 1976,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1962,
+          "month": 9,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/shibdas-ghosh/1962/09/x01.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1962,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Socialist Unity, September 1962",
+          "source": "source_metadata.fields.first published",
+          "field_value": "Socialist Unity, September 1962"
+        }
+      ],
+      "text_dates": [
+        {
+          "year": 1962,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "1962",
+          "source": "text_content_search",
+          "match": "1962"
+        }
+      ],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "ef2ba34e-c13b-532f-b028-0b5c3e3ba681",
+    "title": "Cadres of East Bengal Workers Movement, Be brave!",
+    "author": "Siraj Sikder",
+    "birth_year": 1944,
+    "death_year": 1975,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1971,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/sikder/1971/april23.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "64f7b24e-2e26-56f6-a685-ca88c20b7700",
+    "title": "Communism and its Tactics",
+    "author": "Sylvia Pankhurst",
+    "birth_year": 1882,
+    "death_year": 1960,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1983,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1983,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:07:33.680354+00:00"
+          }
+        },
+        {
+          "year": 2011,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 2011,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:07:33.680444+00:00"
+          }
+        },
+        {
+          "year": 1983,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1983,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:29.017468+00:00"
+          }
+        },
+        {
+          "year": 2011,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 2011,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-03T22:48:29.017539+00:00"
+          }
+        },
+        {
+          "year": 1983,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 1983,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:46.985654+00:00"
+          }
+        },
+        {
+          "year": 2011,
+          "source": "openlibrary",
+          "score": 0.1425,
+          "extracted": {
+            "year": 2011,
+            "precision": "year",
+            "method": "openlibrary_first_publish_year",
+            "retrieved_at": "2026-01-04T14:33:46.985897+00:00"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "ef11253e-2905-5166-a2ef-a5b1b1962ee8",
+    "title": "An Open Letter to the Yorkshire Miners’ Association",
+    "author": "Ted Grant",
+    "birth_year": 1913,
+    "death_year": 2006,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1942,
+          "month": 7,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/grant/1942/07/miners.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "6a5e455e-bb34-5f4f-8ac9-2a6ebeb04125",
+    "title": "A Death that Must Enlighten and Strengthen Us",
+    "author": "Thomas Sankara",
+    "birth_year": 1949,
+    "death_year": 1987,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1986,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/sankara/1986/october/31.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1986,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "October 1986.",
+          "source": "source_metadata.fields.delivered",
+          "field_value": "October 1986."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "8d7d3fe9-6a2f-5b75-8f72-1af00b35de1e",
+    "title": "A Letter from South Africa",
+    "author": "Tom Mann",
+    "birth_year": 1856,
+    "death_year": 1941,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1923,
+          "month": 2,
+          "day": null,
+          "precision": "month",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/mann-tom/1923/02/safrica.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "0785db92-7e3f-5d74-a02a-7a3d18028e1a",
+    "title": "A World to Win",
+    "author": "Tony Cliff",
+    "birth_year": 1917,
+    "death_year": 2000,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 2000,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/cliff/works/2000/wtw/ch01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "dd256bde-0089-53a4-9fb2-89c4618626ae",
+    "title": "1995 assembly elections - Scrutinising Bihar Elections",
+    "author": "Unknown",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1995,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/mishra/1995/x01/x01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "cd23338c-0907-5912-88be-488ae12d74e7",
+    "title": "1995 assembly elections - Scrutinising Bihar Elections",
+    "author": "Vinod Mishra",
+    "birth_year": 1947,
+    "death_year": 1998,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1996,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/reference/archive/mishra/1996/x01/x01.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "7b1e1d13-d384-5eee-a10f-3a435ddba604",
+    "title": "105. To the Iskra Editorial Board",
+    "author": "Vladimir Ilyich Lenin",
+    "birth_year": 1870,
+    "death_year": 1924,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1904,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/lenin/works/1904/aug/24ieb.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1930,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "First published In 1930. Printed from a copy written out by N. K. Krupskaya.",
+          "source": "source_metadata.published"
+        },
+        {
+          "year": 1930,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "First published In 1930. Printed from a copy written out by N. K. Krupskaya.",
+          "source": "source_metadata.fields.published",
+          "field_value": "First published In 1930. Printed from a copy written out by N. K. Krupskaya."
+        },
+        {
+          "year": 1974,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "Lenin Collected Works, Progress Publishers, 1974, Moscow, Volume 34, pages 248-249.",
+          "source": "source_metadata.fields.source",
+          "field_value": "Lenin Collected Works, Progress Publishers, 1974, Moscow, Volume 34, pages 248-249."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": [
+        {
+          "year": 1930,
+          "source": "marxists_ingested_html",
+          "score": 0.92,
+          "extracted": {
+            "year": 1930,
+            "month": null,
+            "day": null,
+            "precision": "year",
+            "method": "marxists_header_published"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "work_id": "da985844-6bb7-5112-9a06-292120f6df94",
+    "title": "Let the Entire People Resolutely and Unanimously Step Up Their Great Patriotic War to Defeat the U.S. Aggressors",
+    "author": "Vo Nguyen Giap",
+    "birth_year": null,
+    "death_year": null,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1966,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/giap/works/1966/let-the-entire-people/ch02.htm"
+        }
+      ],
+      "source_metadata_dates": [],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  },
+  {
+    "work_id": "f0d1f33d-18fc-5a99-b8e3-9ec84b44cbd7",
+    "title": "Comintern: Sixty Years After: Reflections on the Anniversary",
+    "author": "Walter Kendall",
+    "birth_year": 1926,
+    "death_year": 2003,
+    "current_status": {
+      "display_date_field": "unknown",
+      "display_year": null
+    },
+    "findings": {
+      "url_dates": [
+        {
+          "year": 1979,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "source": "url_path",
+          "raw": "https://www.marxists.org/archive/kendall/1979/comintern.htm"
+        }
+      ],
+      "source_metadata_dates": [
+        {
+          "year": 1979,
+          "month": null,
+          "day": null,
+          "precision": "year",
+          "raw": "This article first appeared in Survey, Volume 24, no 1, Winter 1979, pp 145-56. It is an edited extract from Walter Kendall’s book World Revolution: The Russian Revolution and the Communist International, 1898-1935. This book was not published, but a copy of the manuscript was given by the author to Al Richardson, the late editor of Revolutionary History, and is now in the Richardson archive in the University of London’s Senate House Library. Another copy was passed to the British Library. Scanned and prepared for the Marxist Internet Archive by Paul Flewers.",
+          "source": "source_metadata.fields.source",
+          "field_value": "This article first appeared in Survey, Volume 24, no 1, Winter 1979, pp 145-56. It is an edited extract from Walter Kendall’s book World Revolution: The Russian Revolution and the Communist International, 1898-1935. This book was not published, but a copy of the manuscript was given by the author to Al Richardson, the late editor of Revolutionary History, and is now in the Richardson archive in the University of London’s Senate House Library. Another copy was passed to the British Library. Scanned and prepared for the Marxist Internet Archive by Paul Flewers."
+        }
+      ],
+      "text_dates": [],
+      "external_dates": [],
+      "existing_evidence": []
+    }
+  }
+]
