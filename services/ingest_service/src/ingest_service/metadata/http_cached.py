@@ -70,8 +70,9 @@ class CachedHttpClient:
         params: dict[str, Any] | None = None,
         accept: str | None = None,
         as_bytes: bool = False,
+        headers: dict[str, str] | None = None,
     ) -> CachedResponse:
-        cache_key = _cache_key(url, params=params, accept=accept, as_bytes=as_bytes)
+        cache_key = _cache_key(url, params=params, accept=accept, as_bytes=as_bytes, headers=headers)
         meta_path, body_path = _cache_paths(self.cache_dir, cache_key, as_bytes=as_bytes)
         cached = _try_read_cache(meta_path, body_path, max_age_s=self.max_cache_age_s)
         if cached is not None:
@@ -85,7 +86,7 @@ class CachedHttpClient:
             )
 
         self._polite_delay()
-        headers: dict[str, str] = {}
+        headers = dict(headers or {})
         if accept:
             headers["Accept"] = accept
         resp: httpx.Response | None = None
@@ -140,12 +141,20 @@ class CachedHttpClient:
         self._last_request_at = time.time()
 
 
-def _cache_key(url: str, *, params: dict[str, Any] | None, accept: str | None, as_bytes: bool) -> str:
+def _cache_key(
+    url: str,
+    *,
+    params: dict[str, Any] | None,
+    accept: str | None,
+    as_bytes: bool,
+    headers: dict[str, str] | None,
+) -> str:
     payload = {
         "url": url,
         "params": params or {},
         "accept": accept or "",
         "as_bytes": as_bytes,
+        "headers": headers or {},
     }
     raw = json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
     return sha256(raw).hexdigest()

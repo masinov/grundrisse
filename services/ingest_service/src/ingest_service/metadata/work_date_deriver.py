@@ -36,6 +36,7 @@ _COLLECTED_MARKERS = (
 # Keep this conservative: tokens like "vol."/"pp." appear in both periodical *and* collected-works citations.
 _PERIODICAL_MARKERS = (
     "no.",
+    "number",
     "issue",
     "whole no.",
     "pravda",
@@ -72,11 +73,11 @@ def _marxists_date_role_for_header_line(
     demote those just because `Source:` is edition-like.
     """
     if isinstance(line, str):
-        # Collected/selected works detection must win over periodical tokens like "No."/"Vol."/"pp.".
-        if marxists_line_has_edition_markers(line):
-            return "edition_publication_date", "edition_contamination", edition_confidence_cap
+        # Periodical markers should win when present (even if the line has "volume"/"vol.").
         if marxists_line_has_periodical_markers(line):
             return "first_publication_date", None, None
+        if marxists_line_has_edition_markers(line):
+            return "edition_publication_date", "edition_contamination", edition_confidence_cap
 
     if source_kind == "edition":
         return "edition_publication_date", "edition_contamination", edition_confidence_cap
@@ -94,11 +95,11 @@ def classify_marxists_source_kind(source_line: str | None) -> str:
     if not source_line or not isinstance(source_line, str):
         return "unknown"
     lower = source_line.lower()
-    if any(m in lower for m in _COLLECTED_MARKERS):
-        return "edition"
     # Periodical / issue-ish markers.
     if marxists_line_has_periodical_markers(source_line):
         return "periodical"
+    if any(m in lower for m in _COLLECTED_MARKERS):
+        return "edition"
     return "unknown"
 
 
@@ -153,14 +154,37 @@ def build_candidates_from_edition_source_metadata(
     source_url: str | None,
     source_metadata: dict[str, Any] | None,
 ) -> list[DateCandidate]:
+    """
+    Build date candidates from edition source metadata AND URL path.
+
+    URL dates are given HIGHEST priority (0.98 confidence) because marxists.org
+    editorial staff curate the URL structure to reflect actual publication dates.
+    """
+    out: list[DateCandidate] = []
+
+    # HIGHEST PRIORITY: URL path date extraction with full precision
+    if source_url:
+        url_date = _extract_full_date_from_url(source_url)
+        if url_date:
+            out.append(
+                DateCandidate(
+                    role="first_publication_date",
+                    date=url_date,
+                    confidence=0.98,  # Very high - marxists.org curates URLs
+                    source_name="marxists_url_path",
+                    source_locator=source_url,
+                    provenance={"url": source_url, "extraction": "url_path_v2"},
+                    notes=None,
+                )
+            )
+
+    # Then process source_metadata if available
     if not source_metadata or not isinstance(source_metadata, dict):
-        return []
+        return out
     fields = source_metadata.get("fields")
     dates = source_metadata.get("dates")
     if not isinstance(fields, dict) or not isinstance(dates, dict):
-        return []
-
-    out: list[DateCandidate] = []
+        return out
 
     source_line = fields.get("Source") if isinstance(fields.get("Source"), str) else None
     published_line = fields.get("Published") if isinstance(fields.get("Published"), str) else None
@@ -178,62 +202,69 @@ def build_candidates_from_edition_source_metadata(
             "source_kind": source_kind,
         }
 
-    written = dates.get("written")
-    if isinstance(written, dict) and isinstance(written.get("year"), int):
-        out.append(
-            DateCandidate(
-                role="written_date",
-                date=_strip_raw(written),
-                confidence=0.85,
-                source_name="marxists_source_metadata",
-                source_locator=source_url,
-                provenance=prov("Written", fields.get("Written") if isinstance(fields.get("Written"), str) else None),
-            )
-        )
+    # Process all date types from source_metadata
+    for date_type in ["written", "first_published", "published", "date", "delivered"]:
+        date_value = dates.get(date_type)
+        if isinstance(date_value, dict) and isinstance(date_value.get("year"), int):
+            # Map date type to role
+            if date_type == "written":
+                role = "written_date"
+                conf = 0.85
+                field_label = "Written"
+            elif date_type == "first_published":
+                role, note, cap = _marxists_date_role_for_header_line(
+                    line=first_published_line,
+                    source_kind=source_kind,
+                    default_role="first_publication_date",
+                    edition_confidence_cap=0.60,
+                )
+                conf = 0.95
+                if cap is not None:
+                    conf = min(conf, cap)
+                field_label = "First Published"
+            elif date_type == "published":
+                role, note, cap = _marxists_date_role_for_header_line(
+                    line=published_line,
+                    source_kind=source_kind,
+                    default_role="first_publication_date",
+                    edition_confidence_cap=0.55,
+                )
+                conf = 0.90
+                if cap is not None:
+                    conf = min(conf, cap)
+                field_label = "Published"
+            elif date_type == "delivered":
+                role = "first_publication_date"  # Delivered = when speech was given
+                conf = 0.90
+                field_label = "Delivered"
+            else:  # "date" field
+                role = "first_publication_date"
+                conf = 0.92  # "Date" field usually means first publication
+                field_label = "Date"
 
-    first_pub = dates.get("first_published")
-    if isinstance(first_pub, dict) and isinstance(first_pub.get("year"), int):
-        role, note, cap = _marxists_date_role_for_header_line(
-            line=first_published_line,
-            source_kind=source_kind,
-            default_role="first_publication_date",
-            edition_confidence_cap=0.60,
-        )
-        conf = 0.95
-        if cap is not None:
-            conf = min(conf, cap)
-        out.append(
-            DateCandidate(
-                role=role,
-                date=_strip_raw(first_pub),
-                confidence=conf,
-                source_name="marxists_source_metadata",
-                source_locator=source_url,
-                provenance=prov("First Published", first_published_line),
-                notes=note,
+            out.append(
+                DateCandidate(
+                    role=role,
+                    date=_strip_raw(date_value),
+                    confidence=conf,
+                    source_name="marxists_source_metadata",
+                    source_locator=source_url,
+                    provenance=prov(field_label, fields.get(field_label) if isinstance(fields.get(field_label), str) else None),
+                    notes=None,
+                )
             )
-        )
 
-    published = dates.get("published")
-    if isinstance(published, dict) and isinstance(published.get("year"), int):
-        role, note, cap = _marxists_date_role_for_header_line(
-            line=published_line,
-            source_kind=source_kind,
-            default_role="first_publication_date",
-            edition_confidence_cap=0.55,
-        )
-        conf = 0.90
-        if cap is not None:
-            conf = min(conf, cap)
+    title_date = dates.get("title_date")
+    if isinstance(title_date, dict) and isinstance(title_date.get("year"), int):
         out.append(
             DateCandidate(
-                role=role,
-                date=_strip_raw(published),
-                confidence=conf,
+                role="first_publication_date",
+                date=_strip_raw(title_date),
+                confidence=0.45,
                 source_name="marxists_source_metadata",
                 source_locator=source_url,
-                provenance=prov("Published", published_line),
-                notes=note,
+                provenance=prov("Title Date", fields.get("Title Date") if isinstance(fields.get("Title Date"), str) else None),
+                notes="title_date_heuristic",
             )
         )
 
@@ -253,6 +284,42 @@ def build_candidates_from_edition_source_metadata(
             )
 
     return out
+
+
+def _extract_full_date_from_url(url: str) -> dict[str, Any] | None:
+    """
+    Extract date with full precision from marxists.org URL.
+
+    Supports:
+    - /YYYY/MM/DD.htm → day precision
+    - /YYYY/MM/ → month precision
+    - /YYYY/ → year precision
+    """
+    if not url:
+        return None
+
+    # /YYYY/MM/DD.htm or /YYYY/MM/DD/
+    m = re.search(r'/(\d{4})/(\d{2})/(\d{2})(?:\.htm|\.html|/)', url)
+    if m:
+        year, month, day = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if 1500 <= year <= 2030 and 1 <= month <= 12 and 1 <= day <= 31:
+            return {"year": year, "month": month, "day": day, "precision": "day"}
+
+    # /YYYY/MM/ or /YYYY/MM.htm
+    m = re.search(r'/(\d{4})/(\d{2})(?:\.htm|\.html|/)', url)
+    if m:
+        year, month = int(m.group(1)), int(m.group(2))
+        if 1500 <= year <= 2030 and 1 <= month <= 12:
+            return {"year": year, "month": month, "precision": "month"}
+
+    # /YYYY/ or /YYYY.htm
+    m = re.search(r'/(\d{4})(?:\.htm|\.html|/)', url)
+    if m:
+        year = int(m.group(1))
+        if 1500 <= year <= 2030:
+            return {"year": year, "precision": "year"}
+
+    return None
 
 
 _YEAR_RE = re.compile(r"^\d{4}$")

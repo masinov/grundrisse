@@ -610,6 +610,12 @@ def _merge_source_metadata(existing: dict | None, incoming: dict | None) -> dict
                 if fk not in fields or fields.get(fk) in (None, ""):
                     fields[fk] = fv
             merged[k] = fields
+        if k == "dates" and isinstance(merged.get(k), dict) and isinstance(v, dict):
+            dates = dict(merged[k])
+            for dk, dv in v.items():
+                if dk not in dates or dates.get(dk) in (None, ""):
+                    dates[dk] = dv
+            merged[k] = dates
 
     return merged
 

@@ -15,6 +15,8 @@ _HEADER_KEYS = {
     "published",
     "translated",
     "translation",
+    "editor",
+    "edition",
     "transcription",
     "transcription/html markup",
     "transcription/markup",
@@ -25,6 +27,8 @@ _HEADER_KEYS = {
     "copyleft",
     "copyright",
     "notes",
+    "date",  # ADD: Support for generic "Date" field
+    "delivered",  # ADD: Support for "Delivered" field (speeches)
 }
 
 
@@ -52,6 +56,10 @@ def extract_marxists_header_metadata(html: str) -> dict[str, Any] | None:
         # Some pages use spans without the information class; include any paragraph that looks like a header KV list.
         if p.find("span", class_="info") and _looks_like_header_kv(p):
             info_blocks.append(p)
+            continue
+        # Some pages use plain paragraphs with "Written: ..." etc. at the top.
+        if _looks_like_header_kv(p):
+            info_blocks.append(p)
 
     fields: dict[str, str] = {}
     for p in info_blocks:
@@ -67,15 +75,23 @@ def extract_marxists_header_metadata(html: str) -> dict[str, Any] | None:
         if text:
             editorial_intro.append(_clean_ws(text))
 
-    if not fields and not editorial_intro:
+    title_line, title_date = _extract_title_date(container, soup)
+
+    if title_date and "Title Date" not in fields:
+        fields["Title Date"] = title_line or ""
+
+    if not fields and not editorial_intro and not title_date:
         return None
 
     return {
         "fields": fields,
         "dates": {
-            "written": parse_dateish(fields.get("Written")),
-            "first_published": parse_dateish(fields.get("First Published")),
-            "published": parse_dateish(fields.get("Published")),
+            "written": _parse_date_field(fields, ["Written", "written"]),
+            "first_published": _parse_date_field(fields, ["First Published", "First published", "first published"]),
+            "published": _parse_date_field(fields, ["Published", "published"]),
+            "date": _parse_date_field(fields, ["Date", "date"]),  # NEW
+            "delivered": _parse_date_field(fields, ["Delivered", "delivered"]),  # NEW
+            "title_date": title_date,
         },
         "editorial_intro": editorial_intro or None,
         "extracted_at": datetime.now(tz=timezone.utc).isoformat(),
@@ -96,8 +112,31 @@ def _extract_fields_from_information_paragraph(p: Tag) -> dict[str, str]:
     """
     Parse a `<p class="information">` block into key/value fields.
     Prefers `<span class="info">Key:</span>` formatting.
+
+    Now handles case-insensitive field matching for:
+    - "First Published" / "First published" / "first published"
+    - "Published" / "published"
+    - "Written" / "written"
+    - "Date" / "date"
+    - "Delivered" / "delivered"
     """
     out: dict[str, str] = {}
+
+    # Build case-insensitive lookup for known fields
+    field_normalization = {
+        # Canonicalize to preferred capitalization
+        "first published": "First Published",
+        "first_published": "First Published",
+        "firstpub": "First Published",
+        "published": "Published",
+        "written": "Written",
+        "date": "Date",
+        "delivered": "Delivered",
+        "source": "Source",
+        "translated": "Translated",
+        "translation": "Translation",
+        "transcription": "Transcription",
+    }
 
     spans = p.find_all("span", class_="info")
     if spans:
@@ -109,31 +148,31 @@ def _extract_fields_from_information_paragraph(p: Tag) -> dict[str, str]:
             if re.fullmatch(r"\d+\.?", key_raw.strip()):
                 continue
 
-            key = key_raw
+            # Normalize the key using our mapping
+            key_normalized = key_raw.lower()
+            canonical_key = field_normalization.get(key_normalized, key_raw)
+
             value = _text_until_break(span)
             value = _clean_ws(value)
             value = value.lstrip(" :")
             if not value:
                 continue
 
-            # Canonicalize common variants.
-            if key.lower() in {
-                "transcription/html markup",
-                "transcription\\html markup",
-                "transcription\\markup",
-                "transcription/markup",
-                "transcription/mark-up",
-            }:
-                key = "Transcription/Markup"
+            # Further normalize transcription variants
+            if canonical_key.lower().startswith("transcription"):
+                canonical_key = "Transcription"
 
-            out[key] = value
+            out[canonical_key] = value
         return out
 
-    # Fallback: "Written: ..." style without spans.
+    # Fallback: "Written: ..." style without spans
     text = _clean_ws(p.get_text(" ", strip=True))
     m = re.match(r"^([A-Za-z][A-Za-z /\\\\-]{2,40}):\s*(.+)$", text)
     if m:
-        out[m.group(1).strip()] = m.group(2).strip()
+        key_raw = m.group(1).strip()
+        # Normalize key
+        canonical_key = field_normalization.get(key_raw.lower(), key_raw)
+        out[canonical_key] = m.group(2).strip()
     return out
 
 
@@ -228,3 +267,38 @@ def _month_to_int(name: str) -> int | None:
 
 def _clean_ws(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _parse_date_field(fields: dict, variants: list[str]) -> dict[str, Any] | None:
+    """
+    Parse a date field, trying multiple case variants.
+    This handles case-insensitive field matching.
+    """
+    for variant in variants:
+        value = fields.get(variant)
+        if value:
+            return parse_dateish(value)
+    return None
+
+
+def _extract_title_date(container: Tag, soup: BeautifulSoup) -> tuple[str | None, dict[str, Any] | None]:
+    """
+    Best-effort title-line date extraction for pages without header metadata.
+    Uses the first heading or document title that yields a parseable date.
+    """
+    for tag in container.find_all(["h1", "h2", "h3"], limit=6):
+        text = _clean_ws(tag.get_text(" ", strip=True))
+        if not text:
+            continue
+        parsed = parse_dateish(text)
+        if parsed:
+            return text, parsed
+
+    title_tag = soup.title
+    if title_tag:
+        text = _clean_ws(title_tag.get_text(" ", strip=True))
+        parsed = parse_dateish(text)
+        if parsed:
+            return text, parsed
+
+    return None, None
