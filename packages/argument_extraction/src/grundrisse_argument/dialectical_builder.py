@@ -96,10 +96,10 @@ class DialecticalStructureBuilder:
             illocutions=illocutions,
         )
 
-        # Generate motion hypotheses
+        # Generate motion hypotheses (requires illocutions for definitional detection)
         motion_hypotheses = []
         if self.config.enable_motion_hypotheses:
-            motion_hypotheses = self._generate_motion_hypotheses(tree)
+            motion_hypotheses = self._generate_motion_hypotheses(tree, illocutions)
 
         return DocumentDialecticalStructure(
             doc_id=doc_id,
@@ -143,6 +143,14 @@ class DialecticalStructureBuilder:
             propositions=propositions,
             relations=relations,
         )
+
+        # Add cluster-level nodes (for higher-level tree structure)
+        for cluster in tree.clusters:
+            tree.nodes.append(DialecticalNode(
+                node_id=f"node_{cluster.cluster_id}",
+                cluster_id=cluster.cluster_id,
+                node_type="cluster",
+            ))
 
         # Identify contradiction clusters
         tree.contradictions = self._identify_contradictions(
@@ -388,6 +396,7 @@ class DialecticalStructureBuilder:
     def _generate_motion_hypotheses(
         self,
         tree: DialecticalTree,
+        illocutions: list[dict] | None = None,
     ) -> list[MotionHypothesis]:
         """
         Generate motion hypotheses per §11.2.
@@ -396,46 +405,63 @@ class DialecticalStructureBuilder:
         - Conflict → definitional re-articulation
         - Abstract opposition → concrete mechanism
         - Repeated failure → new structural determination
+
+        Per §11.2: Each hypothesis must cite specific nodes and edges forming the pattern.
         """
         hypotheses = []
         counter = 0
 
-        # Pattern 1: Conflict followed by definitional re-articulation
+        if illocutions is None:
+            illocutions = []
+
+        # Build a set of proposition IDs with definitional illocutions
+        definitional_prop_ids = set()
+        for illoc in illocutions:
+            if illoc.get("force") in ["define", "distinguish"]:
+                target = illoc.get("target_prop_id")
+                if target:
+                    definitional_prop_ids.add(target)
+
+        # Pattern 1: Conflict → definitional re-articulation
+        # Per §11.2: Triggered when conflict clusters contain definitional illocutions
         for conflict in tree.contradictions:
-            # Check if either cluster contains definitional illocutions
-            for node in tree.nodes:
-                if node.prop_id:
-                    # Check if this proposition is in a contradictory cluster
-                    # and has a definitional illocution
-                    cluster = self._find_cluster_for_prop(tree.clusters, node.prop_id)
-                    if cluster in [conflict.cluster_a_id, conflict.cluster_b_id]:
-                        # This could trigger a conflict_to_definition motion
-                        hypotheses.append(MotionHypothesis(
-                            hypothesis_id=f"motion_{counter}",
-                            pattern_type=MotionPatternType.CONFLICT_TO_DEFINITION,
-                            trigger_node_ids=[node.node_id],
-                            trigger_edge_ids=conflict.conflict_edges,
-                            description=f"Conflict between clusters {conflict.cluster_a_id} and {conflict.cluster_b_id} "
-                                       f"with shared concepts: {', '.join(conflict.shared_concepts)}",
-                            confidence=0.7,
-                        ))
-                        counter += 1
-                        break
+            # Check if either cluster contains propositions with definitional illocutions
+            cluster_a = next((c for c in tree.clusters if c.cluster_id == conflict.cluster_a_id), None)
+            cluster_b = next((c for c in tree.clusters if c.cluster_id == conflict.cluster_b_id), None)
+
+            has_definitional = False
+            trigger_nodes = []
+
+            if cluster_a:
+                for prop_id in cluster_a.prop_ids:
+                    if prop_id in definitional_prop_ids:
+                        has_definitional = True
+                        trigger_nodes.append(f"node_{prop_id}")
+
+            if cluster_b:
+                for prop_id in cluster_b.prop_ids:
+                    if prop_id in definitional_prop_ids:
+                        has_definitional = True
+                        trigger_nodes.append(f"node_{prop_id}")
+
+            if has_definitional and trigger_nodes:
+                hypotheses.append(MotionHypothesis(
+                    hypothesis_id=f"motion_{counter}",
+                    pattern_type=MotionPatternType.CONFLICT_TO_DEFINITION,
+                    trigger_node_ids=trigger_nodes,
+                    trigger_edge_ids=conflict.conflict_edges,
+                    description=f"Conflict between clusters {conflict.cluster_a_id} and {conflict.cluster_b_id} "
+                               f"with shared concepts: {', '.join(conflict.shared_concepts)} "
+                               f"followed by definitional re-articulation",
+                    confidence=0.7,
+                ))
+                counter += 1
+
+        # Note: Other patterns (abstract_to_concrete, failure_to_structure)
+        # would require additional graph-structural pattern detection
+        # These are placeholders for future implementation
 
         return hypotheses
-
-    def _find_cluster_for_prop(
-        self,
-        clusters: list[PropositionCluster],
-        prop_id: str | None,
-    ) -> str | None:
-        """Find the cluster ID containing a proposition."""
-        if not prop_id:
-            return None
-        for cluster in clusters:
-            if prop_id in cluster.prop_ids:
-                return cluster.cluster_id
-        return None
 
 
 # =============================================================================
