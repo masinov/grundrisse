@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grundrisse-argument-extraction"
+version = "0.1.0"
+description = "AIF/IAT argument extraction and dialectical motion analysis"
+requires-python = ">=3.11"
+dependencies = [
+  "grundrisse-core",
+  "pydantic>=2.0",
+  "pydantic-settings>=2.0",
+  "neo4j>=5.0",
+  "qdrant-client>=1.7",
+  "sentence-transformers>=2.2",
+  "spacy>=3.7",
+  "numpy",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov",
+  "ruff",
+  "mypy",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true

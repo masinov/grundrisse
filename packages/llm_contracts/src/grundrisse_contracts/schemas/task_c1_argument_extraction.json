@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Argument Extraction Window",
+  "description": "Complete extraction from a text window containing locutions, propositions, illocutions, relations, and transitions.",
+  "type": "object",
+  "required": ["locutions", "propositions", "illocutions", "relations"],
+  "properties": {
+    "locutions": {
+      "type": "array",
+      "description": "Spans of text extracted from the window.",
+      "items": {
+        "type": "object",
+        "required": ["loc_id", "text", "start_char", "end_char", "paragraph_id"],
+        "properties": {
+          "loc_id": {
+            "type": "string",
+            "description": "Unique identifier for the locution."
+          },
+          "text": {
+            "type": "string",
+            "description": "Verbatim text slice."
+          },
+          "start_char": {
+            "type": "integer",
+            "description": "Start offset in window."
+          },
+          "end_char": {
+            "type": "integer",
+            "description": "End offset in window."
+          },
+          "paragraph_id": {
+            "type": "string",
+            "description": "Paragraph identifier."
+          },
+          "is_footnote": {
+            "type": "boolean",
+            "description": "True if from a footnote.",
+            "default": false
+          }
+        }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "description": "Discourse transitions between locutions.",
+      "items": {
+        "type": "object",
+        "required": ["transition_id", "from_loc_id", "to_loc_id", "marker", "function_hint"],
+        "properties": {
+          "transition_id": {
+            "type": "string"
+          },
+          "from_loc_id": {
+            "type": "string"
+          },
+          "to_loc_id": {
+            "type": "string"
+          },
+          "marker": {
+            "type": "string",
+            "description": "Discourse marker (e.g., 'however', 'therefore')."
+          },
+          "function_hint": {
+            "type": "string",
+            "enum": ["contrast", "inference", "concession", "continuation", "narrative"],
+            "description": "Functional classification."
+          },
+          "position": {
+            "type": "integer",
+            "description": "Sequential position in window."
+          }
+        }
+      }
+    },
+    "propositions": {
+      "type": "array",
+      "description": "Abstract propositional content.",
+      "items": {
+        "type": "object",
+        "required": ["prop_id", "surface_loc_ids", "text_summary"],
+        "properties": {
+          "prop_id": {
+            "type": "string"
+          },
+          "surface_loc_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "description": "Must reference at least one locution."
+          },
+          "text_summary": {
+            "type": "string",
+            "description": "Self-contained statement of content."
+          },
+          "concept_bindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "concept_label": {"type": "string"},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+              }
+            }
+          },
+          "entity_bindings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "entity_id": {"type": "string"},
+                "entity_type": {"type": "string", "enum": ["person", "school", "position", "unknown"]},
+                "surface_form": {"type": "string"},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+              }
+            }
+          },
+          "temporal_scope": {
+            "type": "string",
+            "description": "e.g., '1844', 'Capitalist Mode'."
+          },
+          "is_implicit_reconstruction": {
+            "type": "boolean",
+            "description": "True if reconstructed from enthymeme.",
+            "default": false
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 1.0
+          }
+        }
+      }
+    },
+    "illocutions": {
+      "type": "array",
+      "description": "Illocutionary edges linking locutions to propositions.",
+      "items": {
+        "type": "object",
+        "required": ["illoc_id", "source_loc_id", "target_prop_id", "force"],
+        "properties": {
+          "illoc_id": {
+            "type": "string"
+          },
+          "source_loc_id": {
+            "type": "string"
+          },
+          "target_prop_id": {
+            "type": "string"
+          },
+          "force": {
+            "type": "string",
+            "enum": ["assert", "deny", "question", "define", "distinguish", "attribute", "concede", "ironic", "hypothetical", "prescriptive"],
+            "description": "Illocutionary force."
+          },
+          "attributed_to": {
+            "type": "string",
+            "description": "Person/School being attributed (e.g., 'Ricardo')."
+          },
+          "is_implicit_opponent": {
+            "type": "boolean",
+            "description": "True if target is an unnamed opponent.",
+            "default": false
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 1.0
+          }
+        }
+      }
+    },
+    "relations": {
+      "type": "array",
+      "description": "Argumentative relations between propositions.",
+      "items": {
+        "type": "object",
+        "required": ["rel_id", "relation_type", "source_prop_ids", "target_prop_id", "evidence_loc_ids"],
+        "properties": {
+          "rel_id": {
+            "type": "string"
+          },
+          "relation_type": {
+            "type": "string",
+            "enum": ["support", "conflict", "rephrase"]
+          },
+          "source_prop_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "description": "Premises / Attacking claims."
+          },
+          "target_prop_id": {
+            "type": "string",
+            "description": "Conclusion / Attacked claim."
+          },
+          "conflict_detail": {
+            "type": "string",
+            "enum": ["rebut", "undercut", "incompatibility"],
+            "description": "Type of conflict (only for conflict relations)."
+          },
+          "targets_inference": {
+            "type": "boolean",
+            "description": "True if attack targets the inference connection.",
+            "default": false
+          },
+          "evidence_loc_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "description": "Text spans licensing the relation (REQUIRED)."
+          },
+          "scheme_type": {
+            "type": "string",
+            "description": "Argument scheme (e.g., 'modus ponens')."
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "default": 1.0
+          }
+        }
+      }
+    },
+    "retrieved_propositions": {
+      "type": "array",
+      "description": "IDs of propositions retrieved from context (read-only).",
+      "items": {"type": "string"},
+      "default": []
+    }
+  }
+}
