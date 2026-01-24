@@ -1,5 +1,23 @@
-"""LLM extraction agent and prompts."""
+"""Argument extraction LLM module.
 
-# TODO: Implement
-# - extractor.py: LLM client for argument extraction
-# - prompts.py: System prompts for extraction
+Exports the ArgumentExtractor for extracting AIF/IAT argument structures
+from text windows using LLM-based extraction.
+"""
+
+from argument_pipeline.llm.extractor import (
+    ArgumentExtractor,
+    ErrorType,
+    ExtractionError,
+    ExtractionResult,
+    RetryPolicy,
+    extract_from_window,
+)
+
+__all__ = [
+    "ArgumentExtractor",
+    "ErrorType",
+    "ExtractionError",
+    "ExtractionResult",
+    "RetryPolicy",
+    "extract_from_window",
+]

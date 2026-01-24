@@ -2,12 +2,13 @@
 Command-line interface for the argument extraction pipeline.
 
 Usage:
+    grundrisse-argument init                      # Initialize databases
+    grundrisse-argument backfill                  # Backfill locutions from existing text
     grundrisse-argument extract <doc_id>          # Extract arguments from document
     grundrisse-argument validate <doc_id>         # Validate extraction
     grundrisse-argument cross-link <doc_id>       # Cross-document linking
     grundrisse-argument motion <doc_id>           # Compute dialectical motion
     grundrisse-argument status                    # Show pipeline status
-    grundrisse-argument init                      # Initialize databases
 """
 
 import sys
@@ -63,6 +64,95 @@ def init(
     console.print("\n[cyan]Next steps:[/cyan]")
     console.print("  1. Start services: docker compose -f ops/docker-compose.yml up -d")
     console.print("  2. Run extraction: grundrisse-argument extract <doc_id>")
+
+
+@app.command()
+def backfill(
+    edition_id: Optional[str] = typer.Option(
+        None, "--edition-id", "-e", help="Specific edition ID (omit for all)"
+    ),
+    source: str = typer.Option(
+        "paragraph", "--source", "-s", help="Source type: 'paragraph' or 'span'"
+    ),
+    batch_size: int = typer.Option(
+        1000, "--batch-size", "-b", help="Batch size for commits"
+    ),
+):
+    """
+    Backfill locutions from existing text units.
+
+    Creates ArgumentLocution records for all Paragraphs or SentenceSpans
+    that don't have one yet. Uses deterministic UUIDs for idempotency.
+    """
+    from grundrisse_core.db.session import SessionLocal
+    from grundrisse_argument.graph import (
+        backfill_paragraph_locutions,
+        backfill_span_locutions,
+        create_extraction_run,
+    )
+
+    _print_banner()
+
+    console.print(f"[yellow]Backfilling locutions...[/yellow]")
+    console.print(f"  Source: {source}")
+    if edition_id:
+        console.print(f"  Edition: {edition_id}")
+    console.print(f"  Batch size: {batch_size}")
+
+    with SessionLocal() as session:
+        # Create extraction run
+        run = create_extraction_run(
+            session=session,
+            pipeline_version="0.1.0",
+            model_name="backfill",
+            prompt_name="locution_backfill",
+            prompt_version="0.1.0",
+            params={"source": source, "batch_size": batch_size},
+        )
+
+        edition_uuid = None
+        if edition_id:
+            try:
+                edition_uuid = __import__("uuid").UUID(edition_id)
+            except ValueError:
+                console.print(f"[red]Invalid edition ID: {edition_id}[/red]")
+                raise typer.Exit(1)
+
+        # Run backfill
+        console.print()
+        if source == "paragraph":
+            stats = backfill_paragraph_locutions(
+                session=session,
+                created_run_id=run.run_id,
+                edition_id=edition_uuid,
+                batch_size=batch_size,
+            )
+        elif source == "span":
+            stats = backfill_span_locutions(
+                session=session,
+                created_run_id=run.run_id,
+                edition_id=edition_uuid,
+                batch_size=batch_size,
+            )
+        else:
+            console.print(f"[red]Invalid source: {source}. Use 'paragraph' or 'span'.[/red]")
+            raise typer.Exit(1)
+
+        # Update run stats
+        run.finished_at = __import__("datetime").datetime.utcnow()
+        run.status = "completed"
+        run.windows_processed = 0  # N/A for backfill
+        run.propositions_extracted = 0  # N/A for backfill
+        run.relations_extracted = 0  # N/A for backfill
+        session.commit()
+
+        # Print results
+        console.print()
+        console.print("[green]✓ Backfill complete[/green]")
+        console.print(f"  Created: {stats['created']}")
+        console.print(f"  Skipped (already exists): {stats['skipped']}")
+        if stats['errors'] > 0:
+            console.print(f"  Errors: {stats['errors']}", style="red")
 
 
 @app.command()

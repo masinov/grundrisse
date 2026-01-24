@@ -1,11 +1,28 @@
-"""Pipeline stages."""
+"""Pipeline stages.
 
-# TODO: Implement pipeline stages
-# - s01_parse.py: DOM parsing and locution extraction (reuse ingest_service)
-# - s02_entity_norm.py: Entity normalization
-# - s03_window.py: Windowing with retrieval-augmented context
-# - s04_extract.py: LLM-based argument extraction
-# - s05_validate.py: Validation and stability filtering
-# - s06_persist.py: Persistence to graph and vector stores
-# - s07_crossdoc.py: Cross-document linking
-# - s08_motion.py: Dialectical motion computation
+Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md §16.4 (Pipeline Stages):
+- Stage 1: Corpus ingestion and structural parsing (reuse existing)
+- Stage 2: Entity normalization (TODO)
+- Stage 3: Normalization with reversibility (reuse existing)
+- Stage 4: Windowing and retrieval setup (implemented)
+- Stage 5: Argument extraction (implemented)
+- Stage 6: Validation and stability filtering (implemented)
+- Stage 7: Vector indexing and retrieval (implemented)
+- Stage 8-11: Higher-level analysis (TODO)
+"""
+
+from argument_pipeline.stages.orchestrator import (
+    ArgumentExtractionOrchestrator,
+    ExtractionConfig,
+    OrchestratorResult,
+    WindowResult,
+    run_extraction_pipeline,
+)
+
+__all__ = [
+    "ArgumentExtractionOrchestrator",
+    "ExtractionConfig",
+    "OrchestratorResult",
+    "WindowResult",
+    "run_extraction_pipeline",
+]

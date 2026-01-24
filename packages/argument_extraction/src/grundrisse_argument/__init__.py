@@ -14,6 +14,30 @@ from grundrisse_argument.models.transition import Transition, TransitionHint
 from grundrisse_argument.models.extraction import ExtractionWindow
 from grundrisse_argument.errors.types import ErrorType, ExtractionError, RetryPolicy
 
+# Vector and retrieval (Phase 7)
+from grundrisse_argument.vector import (
+    QdrantSettings,
+    QdrantClient,
+    PropositionVector,
+    ConceptVector,
+    EntityVector,
+    RetrievedProposition,
+    RetrievalResult,
+)
+from grundrisse_argument.embeddings import (
+    EmbeddingSettings,
+    EmbeddingEncoder,
+    create_embedding_encoder,
+)
+from grundrisse_argument.retrieval import (
+    RetrievalConfig,
+    RetrievedContext,
+    RetrievalOrchestrator,
+    CONCLUSION_MARKERS,
+    EVALUATIVE_MARKERS,
+    DEFINITIONAL_FORCE_TAGS,
+)
+
 __all__ = [
     # Models
     "Locution",
@@ -32,4 +56,23 @@ __all__ = [
     "ErrorType",
     "ExtractionError",
     "RetryPolicy",
+    # Vector (Phase 7)
+    "QdrantSettings",
+    "QdrantClient",
+    "PropositionVector",
+    "ConceptVector",
+    "EntityVector",
+    "RetrievedProposition",
+    "RetrievalResult",
+    # Embeddings (Phase 7)
+    "EmbeddingSettings",
+    "EmbeddingEncoder",
+    "create_embedding_encoder",
+    # Retrieval (Phase 7)
+    "RetrievalConfig",
+    "RetrievedContext",
+    "RetrievalOrchestrator",
+    "CONCLUSION_MARKERS",
+    "EVALUATIVE_MARKERS",
+    "DEFINITIONAL_FORCE_TAGS",
 ]

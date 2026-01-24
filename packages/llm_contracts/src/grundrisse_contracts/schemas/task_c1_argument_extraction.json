@@ -1,20 +1,20 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Argument Extraction Window",
-  "description": "Complete extraction from a text window containing locutions, propositions, illocutions, relations, and transitions.",
+  "description": "Complete extraction from a text window containing locutions, propositions, illocutions, relations, and transitions. Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md Appendix A.",
   "type": "object",
   "required": ["locutions", "propositions", "illocutions", "relations"],
   "properties": {
     "locutions": {
       "type": "array",
-      "description": "Spans of text extracted from the window.",
+      "description": "Spans of text extracted from the window. Per Appendix A: L-node immutable spans.",
       "items": {
         "type": "object",
-        "required": ["loc_id", "text", "start_char", "end_char", "paragraph_id"],
+        "required": ["loc_id", "text", "start_char", "end_char", "paragraph_id", "section_path"],
         "properties": {
           "loc_id": {
             "type": "string",
-            "description": "Unique identifier for the locution."
+            "description": "Unique identifier for the locution (hash of doc_id + offsets)."
           },
           "text": {
             "type": "string",
@@ -22,39 +22,58 @@
           },
           "start_char": {
             "type": "integer",
-            "description": "Start offset in window."
+            "description": "Start offset in document."
           },
           "end_char": {
             "type": "integer",
-            "description": "End offset in window."
+            "description": "End offset in document."
           },
           "paragraph_id": {
             "type": "string",
             "description": "Paragraph identifier."
           },
+          "section_path": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "DOM structural context (section hierarchy).",
+            "default": []
+          },
           "is_footnote": {
             "type": "boolean",
-            "description": "True if from a footnote.",
+            "description": "True if from a footnote (polemical/definitional content).",
             "default": false
+          },
+          "footnote_links": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Linked loc_ids for cross-references.",
+            "default": []
           }
         }
       }
     },
     "transitions": {
       "type": "array",
-      "description": "Discourse transitions between locutions.",
+      "description": "Discourse transitions between locutions. Per Appendix A §3.3: Persisted first-class objects.",
       "items": {
         "type": "object",
-        "required": ["transition_id", "from_loc_id", "to_loc_id", "marker", "function_hint"],
+        "required": ["transition_id", "doc_id", "from_loc_id", "to_loc_id", "marker", "function_hint", "position"],
         "properties": {
           "transition_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique transition identifier."
+          },
+          "doc_id": {
+            "type": "string",
+            "description": "Source document identifier (for cross-doc tracking)."
           },
           "from_loc_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Source locution (L-node)."
           },
           "to_loc_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Target locution (L-node)."
           },
           "marker": {
             "type": "string",
@@ -62,12 +81,12 @@
           },
           "function_hint": {
             "type": "string",
-            "enum": ["contrast", "inference", "concession", "continuation", "narrative"],
-            "description": "Functional classification."
+            "enum": ["contrast", "inference", "concession", "continuation"],
+            "description": "Functional classification per Appendix A (exactly 4 types)."
           },
           "position": {
             "type": "integer",
-            "description": "Sequential position in window."
+            "description": "Sequential position in document."
           }
         }
       }
@@ -173,53 +192,47 @@
     },
     "relations": {
       "type": "array",
-      "description": "Argumentative relations between propositions.",
+      "description": "Argumentative relations between propositions. Per Appendix A §3.6: RA/CA/MA nodes with mandatory evidence.",
       "items": {
         "type": "object",
         "required": ["rel_id", "relation_type", "source_prop_ids", "target_prop_id", "evidence_loc_ids"],
         "properties": {
           "rel_id": {
-            "type": "string"
+            "type": "string",
+            "description": "Unique relation identifier."
           },
           "relation_type": {
             "type": "string",
-            "enum": ["support", "conflict", "rephrase"]
+            "enum": ["support", "conflict", "rephrase"],
+            "description": "Type of argumentative relation per Appendix A."
           },
           "source_prop_ids": {
             "type": "array",
             "items": {"type": "string"},
             "minItems": 1,
-            "description": "Premises / Attacking claims."
+            "description": "Premises / Attacking Claims (one or more)."
           },
           "target_prop_id": {
             "type": "string",
-            "description": "Conclusion / Attacked claim."
+            "description": "Conclusion / Attacked Claim (single)."
           },
           "conflict_detail": {
             "type": "string",
             "enum": ["rebut", "undercut", "incompatibility"],
-            "description": "Type of conflict (only for conflict relations)."
-          },
-          "targets_inference": {
-            "type": "boolean",
-            "description": "True if attack targets the inference connection.",
-            "default": false
+            "description": "Type of conflict (required for conflict relations per Appendix A). Note: undercut per §7.3 targets the inference connection itself."
           },
           "evidence_loc_ids": {
             "type": "array",
             "items": {"type": "string"},
             "minItems": 1,
-            "description": "Text spans licensing the relation (REQUIRED)."
-          },
-          "scheme_type": {
-            "type": "string",
-            "description": "Argument scheme (e.g., 'modus ponens')."
+            "description": "Text spans (e.g., 'therefore') licensing the link. MANDATORY per §12.1."
           },
           "confidence": {
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "default": 1.0
+            "default": 1.0,
+            "description": "Classification confidence."
           }
         }
       }

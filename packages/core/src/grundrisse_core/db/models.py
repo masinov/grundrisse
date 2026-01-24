@@ -22,15 +22,20 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from grundrisse_core.db.base import Base
 from grundrisse_core.db.enums import (
     AlignmentType,
+    ArgumentRelationType,
     AuthorRole,
     BlockSubtype,
     ClaimAttribution,
     ClaimLinkType,
     ClaimType,
+    ConflictType,
     DialecticalStatus,
+    EntityType,
+    IllocutionForce,
     Modality,
     Polarity,
     TextBlockType,
+    TransitionHint,
     WorkType,
 )
 
@@ -732,6 +737,437 @@ class AuthorMetadataEvidence(Base):
     )
 
 
+# =============================================================================
+# Argument Extraction Tables (AIF/IAT Schema)
+# =============================================================================
+
+
+class ArgumentExtractionRun(Base):
+    """
+    Pipeline tracking for argument extraction runs.
+
+    Separate from ExtractionRun to avoid coupling with Stage A/B NLP pipeline.
+    """
+    __tablename__ = "argument_extraction_run"
+
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pipeline_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    git_commit_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    model_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    model_fingerprint: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    prompt_name: Mapped[str] = mapped_column(String(128), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    params: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="started")
+    error_log: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    windows_processed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    propositions_extracted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    relations_extracted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class ArgumentLocution(Base):
+    """
+    L-node in AIF/IAT: An immutable span of text.
+
+    Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md §3.2 and Appendix A:
+    Every higher-order object MUST reference loc_ids. Locutions constitute
+    the audit trail of the system.
+
+    Grounding fields:
+    - One of paragraph_id or sentence_span_id must be set
+    - section_path preserves DOM structure for navigation
+    - is_footnote and footnote_links capture polemical/definitional content
+    """
+    __tablename__ = "argument_locution"
+
+    loc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    edition_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("edition.edition_id"), nullable=False)
+
+    # Text content (verbatim, immutable)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Character offsets (original text positions)
+    start_char: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    end_char: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Grounding: exactly one of these should be set
+    paragraph_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("paragraph.para_id"), nullable=True)
+    sentence_span_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("sentence_span.span_id"), nullable=True)
+
+    # Structural context (§4.1: DOM-aware ingestion)
+    section_path: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)  # List[str]
+
+    # Footnote handling (footnotes are often polemical/definitional)
+    is_footnote: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    footnote_links: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)  # List of linked loc_ids
+
+    # Provenance
+    created_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"))
+
+    edition: Mapped[Edition] = relationship()
+    paragraph: Mapped[Paragraph | None] = relationship()
+    sentence_span: Mapped[SentenceSpan | None] = relationship()
+    extraction_run: Mapped[ArgumentExtractionRun] = relationship()
+
+    __table_args__ = (
+        Index("ix_argument_locution_edition", "edition_id"),
+        Index("ix_argument_locution_paragraph", "paragraph_id"),
+        Index("ix_argument_locution_sentence_span", "sentence_span_id"),
+        Index("ix_argument_locution_footnote", "is_footnote"),
+    )
+
+
+class ArgumentProposition(Base):
+    """
+    I-node in AIF/IAT: Abstract content separated from the act of uttering it.
+
+    Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md §3.4 and Appendix A:
+    A proposition may be realized by multiple locutions. It captures
+    truth-evaluable content abstracted from one or more locutions.
+    """
+    __tablename__ = "argument_proposition"
+
+    prop_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    edition_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("edition.edition_id"), nullable=False)
+
+    # Content representation (self-contained statement of content)
+    text_summary: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Grounding: MUST be grounded to at least one locution
+    surface_loc_ids: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)  # List[str] of loc_ids
+
+    # Concept and entity bindings (§4.3, §9.1)
+    concept_bindings: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)  # List[ConceptBinding]
+    entity_bindings: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)  # List[EntityBinding]
+
+    # Temporal/Dialectical tags (§9.2)
+    temporal_scope: Mapped[str | None] = mapped_column(String(256), nullable=True)
+
+    # Implicit reconstruction from enthymeme (§5.3)
+    is_implicit_reconstruction: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    # Optional canonical label (late-stage only, §8)
+    canonical_label: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    # Confidence and provenance
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"))
+
+    edition: Mapped[Edition] = relationship()
+    extraction_run: Mapped[ArgumentExtractionRun] = relationship()
+
+    __table_args__ = (
+        Index("ix_argument_proposition_edition", "edition_id"),
+        Index("ix_argument_proposition_created_run", "created_run_id"),
+        Index("ix_argument_proposition_canonical", "canonical_label"),
+    )
+
+
+class ArgumentIllocution(Base):
+    """
+    L→P edge in AIF/IAT: The link between L-Node and I-Node.
+
+    Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md §3.5 and Appendix A:
+    Captures 'What is done' with the text - the pragmatic action performed
+    with a proposition (asserting, denying, attributing, defining, etc.).
+
+    Critical for Marxist texts: attribution and denial are explicitly modeled.
+    Irony is treated as a first-class force.
+    """
+    __tablename__ = "argument_illocution"
+
+    illoc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Source and target
+    source_loc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_locution.loc_id"), nullable=False)
+    target_prop_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_proposition.prop_id"), nullable=False)
+
+    # Illocutionary force (§6.2)
+    force: Mapped[IllocutionForce] = mapped_column(
+        Enum(IllocutionForce, native_enum=False), nullable=False
+    )
+
+    # Attribution (§6.3: implicit opponent handling)
+    attributed_to: Mapped[str | None] = mapped_column(Text, nullable=True)  # Person/School (e.g., 'Ricardo', 'The Vulgar Economists')
+    is_implicit_opponent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)  # True if target is abstract/unnamed opponent
+
+    # Confidence and provenance
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"))
+
+    source_locution: Mapped[ArgumentLocution] = relationship()
+    target_proposition: Mapped[ArgumentProposition] = relationship()
+    extraction_run: Mapped[ArgumentExtractionRun] = relationship()
+
+    __table_args__ = (
+        Index("ix_argument_illocution_source", "source_loc_id"),
+        Index("ix_argument_illocution_target", "target_prop_id"),
+    )
+
+
+class ArgumentRelation(Base):
+    """
+    S-node in AIF/IAT: RA/CA/MA Nodes capturing dialectical motion.
+
+    Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md §3.6 and Appendix A:
+    Captures support, conflict, and rephrase relations between propositions.
+    Evidence is MANDATORY - all relations must cite text spans.
+
+    Supports:
+    - RA (inference): premises → conclusion
+    - CA (conflict): rebut, undercut, incompatibility
+    - MA (rephrase): paraphrase, abstraction, concretization
+    """
+    __tablename__ = "argument_relation"
+
+    rel_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    edition_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("edition.edition_id"), nullable=False)
+
+    # Relation type
+    relation_type: Mapped[ArgumentRelationType] = mapped_column(
+        Enum(ArgumentRelationType, native_enum=False), nullable=False
+    )
+
+    # Direction: source_prop_ids is a LIST (multiple premises/attacking claims)
+    source_prop_ids: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)  # List[str] of prop_ids (Premises / Attacking Claims)
+    target_prop_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_proposition.prop_id"), nullable=False)  # Conclusion / Attacked Claim
+
+    # Conflict detail (for conflict relations)
+    conflict_detail: Mapped[ConflictType | None] = mapped_column(
+        Enum(ConflictType, native_enum=False), nullable=True
+    )
+
+    # Evidence is MANDATORY (§12.1 hard constraint)
+    evidence_loc_ids: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)  # List[str] of loc_ids (text spans licensing the link)
+
+    # Optional justification
+    justification: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Confidence and provenance
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"))
+
+    edition: Mapped[Edition] = relationship()
+    target_proposition: Mapped[ArgumentProposition] = relationship(foreign_keys=[target_prop_id])
+    extraction_run: Mapped[ArgumentExtractionRun] = relationship()
+
+    __table_args__ = (
+        Index("ix_argument_relation_edition", "edition_id"),
+        Index("ix_argument_relation_target", "target_prop_id"),
+        Index("ix_argument_relation_type", "relation_type"),
+    )
+
+
+class ArgumentTransition(Base):
+    """
+    Discourse transition between locutions (persisted, queryable).
+
+    Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md §3.3 and Appendix A:
+    Transitions are persisted and queryable as first-class objects. They encode
+    rhetorical motion independent of argument structure and are analytically
+    valuable for identifying discourse boundaries, recovering authorial intent,
+    and supporting fine-grained navigation.
+
+    Transitions are not arguments themselves but signal likely illocutionary
+    and argumentative structure.
+    """
+    __tablename__ = "argument_transition"
+
+    transition_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    doc_id: Mapped[str] = mapped_column(String(128), nullable=False)  # Document identifier (for cross-doc tracking)
+
+    # Locutions connected by this transition
+    from_loc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_locution.loc_id"), nullable=False)
+    to_loc_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_locution.loc_id"), nullable=False)
+
+    # The discourse marker (e.g., "however", "therefore", "on the contrary")
+    marker: Mapped[str] = mapped_column(String(256), nullable=False)
+
+    # Functional classification
+    function_hint: Mapped[TransitionHint] = mapped_column(
+        Enum(TransitionHint, native_enum=False), nullable=False
+    )
+
+    # Position in text (for ordering)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    __table_args__ = (
+        Index("ix_argument_transition_doc", "doc_id"),
+        Index("ix_argument_transition_from", "from_loc_id"),
+        Index("ix_argument_transition_to", "to_loc_id"),
+    )
+
+
+class ConceptBinding(Base):
+    """
+    Concept binding for propositions (§9.1).
+
+    Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md:
+    Each proposition may bind to one or more concepts with:
+    - concept_id
+    - embedding
+    - time_index (document date)
+    """
+    __tablename__ = "concept_binding"
+
+    binding_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    prop_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_proposition.prop_id"), nullable=False)
+
+    # Reference to existing Concept table (Stage A/B)
+    concept_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("concept.concept_id"), nullable=False)
+
+    # Confidence and provenance
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"))
+
+    proposition: Mapped[ArgumentProposition] = relationship()
+    concept: Mapped["Concept"] = relationship()
+    extraction_run: Mapped[ArgumentExtractionRun] = relationship()
+
+    __table_args__ = (
+        Index("ix_concept_binding_prop", "prop_id"),
+        Index("ix_concept_binding_concept", "concept_id"),
+    )
+
+
+class RetrievedProposition(Base):
+    """
+    Retrieved context proposition (read-only, non-extractible).
+
+    Per §5.4: Retrieved context presentation (critical):
+    To prevent context poisoning, retrieved material is presented as:
+    - Explicit marking with [RETRIEVED_CONTEXT]
+    - Structurally separated from extraction window
+    - Read-only constraint: marked with extractable=false
+    - Cannot generate new locutions
+    - Relations may cite retrieved props as premises, but retrieved text
+      cannot serve as evidence locutions
+
+    This table tracks which propositions were retrieved for context
+    during extraction, preventing circular references and ensuring
+    auditability of what context influenced each extraction.
+    """
+    __tablename__ = "retrieved_proposition"
+
+    retrieval_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # The extraction run that performed the retrieval
+    extraction_run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"))
+
+    # The window/edition that retrieved this context
+    window_id: Mapped[str] = mapped_column(String(128), nullable=False)  # The ExtractionWindow that retrieved this
+    edition_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("edition.edition_id"), nullable=False)
+
+    # The proposition that was retrieved for context
+    source_prop_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("argument_proposition.prop_id"), nullable=False)
+
+    # Source edition of the retrieved proposition (for cross-document retrieval)
+    source_edition_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("edition.edition_id"), nullable=True)
+
+    # Retrieval metadata
+    retrieval_method: Mapped[str] = mapped_column(String(64), nullable=False)  # e.g., "vector", "concept_overlap", "entity_alignment"
+    retrieval_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    position_in_context: Mapped[int] = mapped_column(Integer, nullable=False)  # Order in retrieved context list
+
+    extraction_run: Mapped[ArgumentExtractionRun] = relationship()
+    edition: Mapped[Edition] = relationship()
+    source_proposition: Mapped[ArgumentProposition] = relationship()
+    source_edition: Mapped[Edition | None] = relationship(foreign_keys=[source_edition_id])
+
+    __table_args__ = (
+        Index("ix_retrieved_proposition_window", "window_id"),
+        Index("ix_retrieved_proposition_edition", "edition_id"),
+        Index("ix_retrieved_proposition_run", "extraction_run_id"),
+    )
+
+
+class EntityCatalog(Base):
+    """
+    Canonical catalog of named entities (persons, schools, positions).
+
+    Enables stable entity resolution across argument extraction runs.
+    """
+    __tablename__ = "entity_catalog"
+
+    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Entity type
+    entity_type: Mapped[EntityType] = mapped_column(
+        Enum(EntityType, native_enum=False), nullable=False
+    )
+
+    # Canonical name/label
+    label_canonical: Mapped[str] = mapped_column(String(512), nullable=False)
+
+    # Aliases and variants
+    aliases: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
+
+    # Optional metadata (renamed from 'metadata' - reserved in SQLAlchemy)
+    entity_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # External reference (e.g., to Author table for persons)
+    author_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("author.author_id"), nullable=True
+    )
+
+    # Provenance
+    created_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"), nullable=True
+    )
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="proposed")
+
+    author: Mapped[Author | None] = relationship()
+
+    __table_args__ = (
+        Index("ix_entity_catalog_type", "entity_type"),
+        Index("ix_entity_catalog_label", "label_canonical"),
+    )
+
+
+class EntityBinding(Base):
+    """
+    Binds surface form mentions to canonical entities.
+
+    Enables stable attribution of propositions to specific persons/schools.
+    """
+    __tablename__ = "entity_binding"
+
+    binding_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # The canonical entity this binding resolves to
+    entity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("entity_catalog.entity_id"), nullable=False)
+
+    # Surface form mention
+    surface_form: Mapped[str] = mapped_column(String(512), nullable=False)
+
+    # Context of the mention (which proposition/locution)
+    proposition_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("argument_proposition.prop_id"), nullable=True
+    )
+    locution_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("argument_locution.loc_id"), nullable=True
+    )
+
+    # Confidence and provenance
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    created_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("argument_extraction_run.run_id"), nullable=True
+    )
+
+    entity: Mapped[EntityCatalog] = relationship()
+    proposition: Mapped[ArgumentProposition | None] = relationship()
+    locution: Mapped[ArgumentLocution | None] = relationship()
+
+    __table_args__ = (
+        Index("ix_entity_binding_entity", "entity_id"),
+        Index("ix_entity_binding_surface", "surface_form"),
+    )
+
+
 def import_models() -> None:
     # Used by Alembic autogenerate. Keep import side effects explicit.
     _ = (
@@ -766,4 +1202,15 @@ def import_models() -> None:
         EditionSourceHeader,
         AuthorMetadataRun,
         AuthorMetadataEvidence,
+        # Argument extraction models (AIF/IAT per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md)
+        ArgumentExtractionRun,
+        ArgumentLocution,
+        ArgumentProposition,
+        ArgumentIllocution,
+        ArgumentRelation,
+        ArgumentTransition,
+        ConceptBinding,
+        RetrievedProposition,
+        EntityCatalog,
+        EntityBinding,
     )

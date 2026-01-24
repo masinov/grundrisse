@@ -100,3 +100,52 @@ class AlignmentType(str, enum.Enum):
     translation_of = "translation_of"
     parallel = "parallel"
     loose_parallel = "loose_parallel"
+
+
+class IllocutionForce(str, enum.Enum):
+    """Illocutionary forces for argument extraction."""
+    assert_ = "assert"
+    deny = "deny"
+    question = "question"
+    define = "define"
+    distinguish = "distinguish"
+    attribute = "attribute"
+    concede = "concede"
+    ironic = "ironic"
+    hypothetical = "hypothetical"
+    prescriptive = "prescriptive"
+
+
+class ArgumentRelationType(str, enum.Enum):
+    """Types of argumentative relations."""
+    support = "support"
+    conflict = "conflict"
+    rephrase = "rephrase"
+
+
+class ConflictType(str, enum.Enum):
+    """Types of conflict."""
+    rebut = "rebut"
+    undercut = "undercut"
+    incompatibility = "incompatibility"
+
+
+class TransitionHint(str, enum.Enum):
+    """
+    Discourse transition types.
+
+    Per AUTONOMOUS_DIALECTICAL_TREE_EXTRACTION.md Appendix A:
+    Exactly 4 transition hints for discourse marker detection.
+    """
+    contrast = "contrast"
+    inference = "inference"
+    concession = "concession"
+    continuation = "continuation"
+
+
+class EntityType(str, enum.Enum):
+    """Types of named entities."""
+    person = "person"
+    school = "school"
+    position = "position"
+    unknown = "unknown"
