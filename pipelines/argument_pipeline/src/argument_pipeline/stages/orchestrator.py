@@ -40,6 +40,13 @@ from grundrisse_argument.retrieval import (
     RetrievedContext,
 )
 
+# Stage 8: Dialectical structure
+from grundrisse_argument.dialectical import DocumentDialecticalStructure
+from grundrisse_argument.dialectical_builder import (
+    DialecticalBuilderConfig,
+    build_dialectical_structure,
+)
+
 
 # =============================================================================
 # Configuration
@@ -68,6 +75,9 @@ class ExtractionConfig:
 
     # Indexing configuration (Phase 7)
     index_after_extraction: bool = True
+
+    # Stage 8: Dialectical structure building
+    build_dialectical_structure: bool = True
 
     # Progress reporting
     progress_every_windows: int = 10
@@ -98,6 +108,7 @@ class OrchestratorResult:
     total_elapsed_seconds: float = 0.0
     window_results: list[WindowResult] = field(default_factory=list)
     errors: list[ExtractionError] = field(default_factory=list)
+    dialectical_structure: DocumentDialecticalStructure | None = None  # Stage 8
 
 
 # =============================================================================
@@ -215,6 +226,13 @@ class ArgumentExtractionOrchestrator:
 
         result.total_elapsed_seconds = (datetime.utcnow() - started).total_seconds()
         result.success = result.failed_windows == 0
+
+        # Stage 8: Build per-document dialectical structure
+        if result.success and self.config.build_dialectical_structure:
+            result.dialectical_structure = self._build_dialectical_structure(
+                doc_id=doc_id,
+                window_results=result.window_results,
+            )
 
         return result
 
@@ -355,6 +373,59 @@ class ArgumentExtractionOrchestrator:
         # Batch index all propositions
         if propositions_to_index:
             self.retrieval_orchestrator.index_propositions_batch(propositions_to_index)
+
+    def _build_dialectical_structure(
+        self,
+        doc_id: str,
+        window_results: list[WindowResult],
+    ) -> DocumentDialecticalStructure | None:
+        """
+        Build dialectical structure for a document (Stage 8).
+
+        Per Stage 8:
+        - Retrieve all propositions within the document
+        - Build internal support/conflict networks
+        - Identify local contradiction clusters
+        - Generate internal dialectical trees
+
+        Args:
+            doc_id: Document identifier
+            window_results: Results from processing each window
+
+        Returns:
+            DocumentDialecticalStructure or None if no successful extractions
+        """
+        # Collect successful extraction results
+        extraction_data = []
+        for wr in window_results:
+            if wr.success and wr.data:
+                extraction_data.append(wr.data)
+
+        if not extraction_data:
+            return None
+
+        # Build dialectical structure
+        structure = build_dialectical_structure(
+            doc_id=doc_id,
+            extraction_results=extraction_data,
+        )
+
+        # Log summary
+        print(f"\n=== Stage 8: Dialectical Structure for {doc_id} ===")
+        print(f"  Propositions: {structure.get_proposition_count()}")
+        print(f"  Relations: {structure.get_relation_count()}")
+        print(f"  Clusters: {structure.get_cluster_count()}")
+        print(f"  Contradictions: {structure.get_contradiction_count()}")
+        print(f"  Motion hypotheses: {len(structure.motion_hypotheses)}")
+
+        if structure.tree.contradictions:
+            print(f"\n  Contradiction details:")
+            for c in structure.tree.contradictions:
+                print(f"    - {c.cluster_a_id} <-> {c.cluster_b_id}")
+                print(f"      Type: {c.contradiction_type.value}")
+                print(f"      Shared concepts: {', '.join(c.shared_concepts)}")
+
+        return structure
 
 
 # =============================================================================

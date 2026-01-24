@@ -38,6 +38,25 @@ from grundrisse_argument.retrieval import (
     DEFINITIONAL_FORCE_TAGS,
 )
 
+# Dialectical structure (Stage 8)
+from grundrisse_argument.dialectical import (
+    MotionPatternType,
+    ContradictionType,
+    PropositionCluster,
+    ClusterRelation,
+    ContradictionCluster,
+    DialecticalNode,
+    DialecticalEdge,
+    DialecticalTree,
+    MotionHypothesis,
+    DocumentDialecticalStructure,
+)
+from grundrisse_argument.dialectical_builder import (
+    DialecticalBuilderConfig,
+    DialecticalStructureBuilder,
+    build_dialectical_structure,
+)
+
 __all__ = [
     # Models
     "Locution",
@@ -75,4 +94,18 @@ __all__ = [
     "CONCLUSION_MARKERS",
     "EVALUATIVE_MARKERS",
     "DEFINITIONAL_FORCE_TAGS",
+    # Dialectical (Stage 8)
+    "MotionPatternType",
+    "ContradictionType",
+    "PropositionCluster",
+    "ClusterRelation",
+    "ContradictionCluster",
+    "DialecticalNode",
+    "DialecticalEdge",
+    "DialecticalTree",
+    "MotionHypothesis",
+    "DocumentDialecticalStructure",
+    "DialecticalBuilderConfig",
+    "DialecticalStructureBuilder",
+    "build_dialectical_structure",
 ]
